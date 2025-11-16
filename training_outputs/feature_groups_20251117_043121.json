@@ -1,0 +1,50 @@
+{
+  "activity_features": [
+    "activity_intensity_score",
+    "contribution_consistency",
+    "repo_creation_rate",
+    "recent_activity_ratio",
+    "code_change_rate",
+    "development_velocity",
+    "multitasking_score",
+    "commit_freq_per_year"
+  ],
+  "technical_features": [
+    "language_specialization",
+    "tech_stack_breadth",
+    "repo_language_diversity",
+    "avg_languages_per_repo",
+    "project_complexity"
+  ],
+  "collaboration_features": [
+    "community_engagement_score",
+    "collaboration_ratio",
+    "fork_contribution_rate",
+    "social_coding_index",
+    "mentorship_score",
+    "network_influence"
+  ],
+  "quality_features": [
+    "repo_active_score",
+    "showcase_score",
+    "maintenance_score",
+    "avg_stars_per_repo",
+    "public_repo_ratio",
+    "code_review_participation"
+  ],
+  "influence_features": [
+    "reputation_score",
+    "impact_factor",
+    "influence_growth_rate",
+    "viral_repo_score",
+    "leadership_score"
+  ],
+  "behavioral_features": [
+    "maintainer_score",
+    "team_player_score",
+    "generalist_score",
+    "work_consistency",
+    "learning_velocity",
+    "innovation_index"
+  ]
+}

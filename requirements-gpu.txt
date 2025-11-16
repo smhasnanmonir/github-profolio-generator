@@ -1,0 +1,42 @@
+# GPU-Accelerated Training Requirements
+# Install these for NVIDIA GPU acceleration
+
+# === Core ML Libraries (GPU versions) ===
+numpy>=1.24.0
+pandas>=1.5.0
+scikit-learn==1.5.2
+scipy>=1.10.0
+joblib>=1.2.0
+
+# === XGBoost with GPU Support ===
+# For CUDA 11.x:
+xgboost==2.1.1
+
+# === PyTorch with CUDA (Optional - for TensorFlow models) ===
+# Uncomment the version matching your CUDA version:
+# For CUDA 11.8:
+# torch>=2.0.0+cu118 --extra-index-url https://download.pytorch.org/whl/cu118
+# For CUDA 12.1:
+# torch>=2.0.0+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
+
+# === Visualization ===
+matplotlib>=3.7.0
+seaborn>=0.12.0
+tqdm>=4.65.0
+
+# === Data Processing ===
+openpyxl>=3.1.0
+
+# === CUDA Support Check ===
+# After installation, verify GPU support:
+# python -c "import torch; print(f'CUDA Available: {torch.cuda.is_available()}')"
+# python -c "import xgboost as xgb; print(f'XGBoost version: {xgb.__version__}')"
+
+# === Installation Instructions ===
+# 1. Ensure NVIDIA GPU drivers are installed
+# 2. Install CUDA Toolkit (https://developer.nvidia.com/cuda-downloads)
+# 3. Install cuDNN (https://developer.nvidia.com/cudnn)
+# 4. Install this requirements file:
+#    pip install -r requirements-gpu.txt
+# 5. Verify GPU is detected when running ml_model.py
+

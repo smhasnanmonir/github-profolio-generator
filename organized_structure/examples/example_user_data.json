@@ -1,0 +1,103 @@
+{
+  "login": "example_user",
+  "name": "Example User",
+  "avatarUrl": "https://avatars.githubusercontent.com/u/123456?v=4",
+  "location": "San Francisco, CA",
+  "websiteUrl": "https://example.com",
+  "followers": {
+    "totalCount": 42
+  },
+  "repositories": {
+    "nodes": [
+      {
+        "name": "awesome-project",
+        "description": "An awesome project that does amazing things",
+        "url": "https://github.com/example_user/awesome-project",
+        "stargazerCount": 150,
+        "forkCount": 25,
+        "createdAt": "2023-01-15T10:30:00Z",
+        "updatedAt": "2024-09-27T15:45:00Z",
+        "isFork": false,
+        "primaryLanguage": {
+          "name": "Python"
+        },
+        "languages": {
+          "edges": [
+            {
+              "node": {
+                "name": "Python"
+              }
+            },
+            {
+              "node": {
+                "name": "JavaScript"
+              }
+            },
+            {
+              "node": {
+                "name": "HTML"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "cool-library",
+        "description": "A cool library for developers",
+        "url": "https://github.com/example_user/cool-library",
+        "stargazerCount": 75,
+        "forkCount": 12,
+        "createdAt": "2023-06-20T14:20:00Z",
+        "updatedAt": "2024-08-15T09:30:00Z",
+        "isFork": false,
+        "primaryLanguage": {
+          "name": "JavaScript"
+        },
+        "languages": {
+          "edges": [
+            {
+              "node": {
+                "name": "JavaScript"
+              }
+            },
+            {
+              "node": {
+                "name": "TypeScript"
+              }
+            },
+            {
+              "node": {
+                "name": "CSS"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "contributionsCollection": {
+    "totalCommitContributions": 250,
+    "totalIssueContributions": 15,
+    "totalPullRequestContributions": 8,
+    "totalPullRequestReviewContributions": 12,
+    "totalRepositoryContributions": 5,
+    "commitContributionsByRepository": [
+      {
+        "repository": {
+          "name": "awesome-project"
+        },
+        "contributions": {
+          "totalCount": 180
+        }
+      },
+      {
+        "repository": {
+          "name": "cool-library"
+        },
+        "contributions": {
+          "totalCount": 70
+        }
+      }
+    ]
+  }
+}

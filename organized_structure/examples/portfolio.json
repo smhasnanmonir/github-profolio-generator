@@ -1,0 +1,73 @@
+{
+  "name": "Kiet",
+  "avatarUrl": "https://avatars.githubusercontent.com/u/31864905?u=7b9664d75a852504de5268a6da6c21184b00be17&v=4",
+  "headline": "Kitenite - Developer specializing in Python",
+  "summary": "Kiet is a specialist developer with 926 commits and 155 followers.",
+  "location": "San Francisco",
+  "websiteUrl": "https://onlook.com/",
+  "skills": ["Python"],
+  "strengths": ["Strong in Python"],
+  "behavior_profile": {
+    "focus": "specialist",
+    "collaboration_style": "maintainer",
+    "work_rhythm": "sporadic",
+    "stability": "long-term projects",
+    "communication": "high PR/issue engagement"
+  },
+  "top_projects": [
+    {
+      "name": "llm-kb",
+      "url": "https://github.com/Kitenite/llm-kb",
+      "tech": ["Dockerfile", "Kotlin", "Ruby"],
+      "highlights": ["44 stars, updated 4.8 months ago"],
+      "impact": "Popular repo with 44 stars",
+      "stars": 44,
+      "role": "owner",
+      "timeline": "2023-04-29 to 2025-05-04",
+      "commits": 0,
+      "forks": 6,
+      "description": "A self-hosted solution to internal search",
+      "primaryLanguage": "Dart"
+    },
+    {
+      "name": "ai_flow_flutter",
+      "url": "https://github.com/Kitenite/ai_flow_flutter",
+      "tech": ["Kotlin", "Ruby", "Swift"],
+      "highlights": ["2 stars, updated 8.3 months ago"],
+      "impact": "Popular repo with 2 stars",
+      "stars": 2,
+      "role": "owner",
+      "timeline": "2023-01-27 to 2025-01-17",
+      "commits": 0,
+      "forks": 0,
+      "description": null,
+      "primaryLanguage": "Dart"
+    },
+    {
+      "name": "ai_draw_ios",
+      "url": "https://github.com/Kitenite/ai_draw_ios",
+      "tech": ["Swift"],
+      "highlights": ["1 stars, updated 4.8 months ago"],
+      "impact": "Popular repo with 1 stars",
+      "stars": 1,
+      "role": "owner",
+      "timeline": "2022-10-23 to 2025-05-02",
+      "commits": 0,
+      "forks": 0,
+      "description": null,
+      "primaryLanguage": "Swift"
+    }
+  ],
+  "total_stats": {
+    "followers": 155,
+    "total_stars": 50,
+    "total_forks": 7,
+    "total_commits": 926,
+    "total_pr_reviews": 204,
+    "total_issues_solved": 1157
+  },
+  "meta": {
+    "github_username": "Kitenite",
+    "generated_at": "2025-09-24T13:15:24.755443"
+  }
+}

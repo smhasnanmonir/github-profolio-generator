@@ -1,0 +1,125 @@
+Feature Engineering Summary
+============================================================
+
+Generated: 2025-11-17 04:31:22
+Total features: 132
+Original features: 70
+Engineered features: 62
+Total samples: 6629
+
+Feature Groups (present-only):
+------------------------------------------------------------
+
+activity_features (8 features):
+  - activity_intensity_score
+  - contribution_consistency
+  - repo_creation_rate
+  - recent_activity_ratio
+  - code_change_rate
+  - development_velocity
+  - multitasking_score
+  - commit_freq_per_year
+
+technical_features (5 features):
+  - language_specialization
+  - tech_stack_breadth
+  - repo_language_diversity
+  - avg_languages_per_repo
+  - project_complexity
+
+collaboration_features (6 features):
+  - community_engagement_score
+  - collaboration_ratio
+  - fork_contribution_rate
+  - social_coding_index
+  - mentorship_score
+  - network_influence
+
+quality_features (6 features):
+  - repo_active_score
+  - showcase_score
+  - maintenance_score
+  - avg_stars_per_repo
+  - public_repo_ratio
+  - code_review_participation
+
+influence_features (5 features):
+  - reputation_score
+  - impact_factor
+  - influence_growth_rate
+  - viral_repo_score
+  - leadership_score
+
+behavioral_features (6 features):
+  - maintainer_score
+  - team_player_score
+  - generalist_score
+  - work_consistency
+  - learning_velocity
+  - innovation_index
+
+
+All Engineered Features:
+------------------------------------------------------------
+  1. activity_intensity_score
+  2. avg_forks_per_repo
+  3. avg_languages_per_repo
+  4. avg_languages_per_repo_x
+  5. avg_languages_per_repo_y
+  6. avg_repo_size
+  7. avg_stars_per_repo
+  8. avg_watchers_per_repo
+  9. code_change_rate
+ 10. code_review_index
+ 11. code_review_participation
+ 12. collaboration_ratio
+ 13. commit_freq_per_year
+ 14. community_engagement_score
+ 15. contribution_consistency
+ 16. development_velocity
+ 17. fork_contribution_rate
+ 18. generalist_score
+ 19. impact_factor
+ 20. influence_growth_rate
+ 21. innovation_index
+ 22. language_balance
+ 23. language_specialization
+ 24. lead_mentorship
+ 25. lead_org
+ 26. lead_review
+ 27. lead_support
+ 28. leadership_score
+ 29. learning_velocity
+ 30. maintainer_score
+ 31. maintenance_rate
+ 32. maintenance_score
+ 33. max_forks_repo
+ 34. max_stars_repo
+ 35. mentorship_score
+ 36. multitasking_breadth
+ 37. multitasking_index
+ 38. multitasking_score
+ 39. multitasking_share_of_portfolio
+ 40. network_influence
+ 41. owner_login
+ 42. profile_completeness
+ 43. project_complexity
+ 44. public_repo_ratio
+ 45. recent_active_repo_coverage
+ 46. recent_activity_ratio
+ 47. repo_active_score
+ 48. repo_count_all
+ 49. repo_creation_rate
+ 50. repo_language_diversity
+ 51. reputation_score
+ 52. showcase_score
+ 53. social_coding_index
+ 54. stars_std_dev
+ 55. team_player_score
+ 56. tech_stack_breadth
+ 57. total_forked_repos_owned
+ 58. total_forks_received
+ 59. total_stars_received
+ 60. total_watchers
+ 61. viral_repo_score
+ 62. work_consistency
