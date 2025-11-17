@@ -272,6 +272,26 @@ def create_portfolio(req: PortfolioRequest):
                 if not ok:
                     pdf_path = None
 
+        # Extract repositories for frontend "Add from GitHub" feature
+        repositories = []
+        if repos:
+            for repo in repos:
+                repositories.append({
+                    "name": repo.get("name", ""),
+                    "description": repo.get("description") or "",
+                    "url": repo.get("url", ""),
+                    "stargazers": {"totalCount": repo.get("stargazers", {}).get("totalCount", 0)} if isinstance(repo.get("stargazers"), dict) else 0,
+                    "stargazer_count": repo.get("stargazers", {}).get("totalCount", 0) if isinstance(repo.get("stargazers"), dict) else repo.get("stargazers", 0),
+                    "forkCount": repo.get("forkCount", 0),
+                    "forks_count": repo.get("forkCount", 0),
+                    "watchers": {"totalCount": repo.get("watchers", {}).get("totalCount", 0)} if isinstance(repo.get("watchers"), dict) else 0,
+                    "watchers_count": repo.get("watchers", {}).get("totalCount", 0) if isinstance(repo.get("watchers"), dict) else repo.get("watchers", 0),
+                    "primaryLanguage": repo.get("primaryLanguage"),
+                    "language": repo.get("primaryLanguage", {}).get("name") if isinstance(repo.get("primaryLanguage"), dict) else repo.get("primaryLanguage"),
+                    "updatedAt": repo.get("updatedAt", ""),
+                    "updated_at": repo.get("updatedAt", ""),
+                })
+
         return {
             "success": True,
             "input_json": str(input_json),
@@ -280,6 +300,8 @@ def create_portfolio(req: PortfolioRequest):
             "summary_path": None,
             "pdf_path": str(pdf_path) if pdf_path else None,
             "portfolio": portfolio,
+            "repositories": repositories,
+            "user": user_data,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

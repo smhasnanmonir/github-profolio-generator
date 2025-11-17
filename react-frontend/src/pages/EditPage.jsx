@@ -1,23 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Eye, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Download, Loader2, Plus, FileText, FileType, ExternalLink } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { usePortfolio } from '../hooks/usePortfolio';
+import api from '../services/api';
 import ProfileEditor from '../components/editor/ProfileEditor';
 import BehaviorEditor from '../components/editor/BehaviorEditor';
 import SkillsEditor from '../components/editor/SkillsEditor';
 import ProjectsEditor from '../components/editor/ProjectsEditor';
-import PreviewPanel from '../components/preview/PreviewPanel';
+import LivePreview from '../components/preview/LivePreview';
+import LivePDFPreview from '../components/preview/LivePDFPreview';
 
 export default function EditPage() {
   const { username } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
-  const [showPreview, setShowPreview] = useState(false);
+  const [previewType, setPreviewType] = useState('html'); // 'html' or 'pdf'
   const [isSaving, setIsSaving] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(null); // 'skills' or 'projects'
 
-  // Load portfolio from localStorage
+  // Load portfolio and full data from localStorage
   const savedData = localStorage.getItem(`portfolio_${username}`);
+  const fullData = localStorage.getItem(`portfolio_full_${username}`);
   const initialData = savedData ? JSON.parse(savedData) : null;
+  const allData = fullData ? JSON.parse(fullData) : null;
+
+  // Get latest outputs for download buttons
+  const { data: outputs } = useQuery({
+    queryKey: ['latest-outputs'],
+    queryFn: api.getLatestOutputs,
+    retry: false,
+  });
 
   const {
     portfolio,
@@ -27,26 +40,33 @@ export default function EditPage() {
     updateProject,
     addProject,
     removeProject,
+    moveProject,
     updateSkills,
+    addSkill,
     reset,
     saveToLocalStorage,
   } = usePortfolio(initialData);
 
   useEffect(() => {
     if (!portfolio) {
-      // Redirect if no portfolio data
       navigate('/generate');
     }
   }, [portfolio, navigate]);
 
+  // Auto-save on changes
+  useEffect(() => {
+    if (hasChanges && portfolio) {
+      const timer = setTimeout(() => {
+        saveToLocalStorage(username);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [portfolio, hasChanges, username, saveToLocalStorage]);
+
   const handleSave = () => {
     setIsSaving(true);
     saveToLocalStorage(username);
-    
-    // Simulate save delay for UX
-    setTimeout(() => {
-      setIsSaving(false);
-    }, 500);
+    setTimeout(() => setIsSaving(false), 500);
   };
 
   const handlePreview = () => {
@@ -59,7 +79,7 @@ export default function EditPage() {
   if (!portfolio) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-blue-400 animate-spin" />
+        <Loader2 className="w-12 h-12 text-zinc-400 animate-spin" />
       </div>
     );
   }
@@ -75,66 +95,131 @@ export default function EditPage() {
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-
-          <div className="flex items-center gap-3">
-            {hasChanges && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-                Unsaved changes
-              </span>
-            )}
-            
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex items-center justify-between">
             <button
-              onClick={handleSave}
-              disabled={!hasChanges || isSaving}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:bg-white/5 disabled:text-slate-500 border border-white/10 text-white rounded-lg flex items-center gap-2 transition-all disabled:cursor-not-allowed"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
             >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save
-                </>
+              <ArrowLeft className="w-4 h-4" />
+              Back to Home
+            </button>
+
+            <div className="flex items-center gap-3">
+              {hasChanges && (
+                <span className="text-xs text-yellow-400 flex items-center gap-1">
+                  <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                  Auto-saving...
+                </span>
               )}
-            </button>
+              
+              <button
+                onClick={handleSave}
+                disabled={!hasChanges || isSaving}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-900 border border-zinc-700 disabled:border-zinc-800 text-white disabled:text-slate-500 rounded-lg flex items-center gap-2 transition-all disabled:cursor-not-allowed"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save
+                  </>
+                )}
+              </button>
 
-            <button
-              onClick={handlePreview}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg flex items-center gap-2 transition-all"
-            >
-              <Eye className="w-4 h-4" />
-              Preview
-            </button>
+              <button
+                onClick={handlePreview}
+                className="px-4 py-2 bg-white hover:bg-zinc-100 text-zinc-900 rounded-lg flex items-center gap-2 transition-all font-medium"
+              >
+                <Eye className="w-4 h-4" />
+                Preview & Download
+              </button>
+            </div>
           </div>
+
+          {/* Quick Actions Bar */}
+          {outputs && (outputs.html_path || outputs.pdf_path) && (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-300">Quick Download:</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {outputs.html_path && (
+                    <>
+                      <a
+                        href={api.getViewUrl(outputs.html_path)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        HTML
+                      </a>
+                      <a
+                        href={api.getDownloadUrl(outputs.html_path)}
+                        download
+                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
+                      >
+                        <Download className="w-3 h-3" />
+                        HTML
+                      </a>
+                    </>
+                  )}
+                  {outputs.pdf_path && (
+                    <>
+                      <a
+                        href={api.getViewUrl(outputs.pdf_path)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        PDF
+                      </a>
+                      <a
+                        href={api.getDownloadUrl(outputs.pdf_path)}
+                        download
+                        className="px-3 py-1.5 bg-white hover:bg-zinc-100 text-zinc-900 rounded text-xs flex items-center gap-1.5 transition-all font-medium"
+                      >
+                        <Download className="w-3 h-3" />
+                        PDF
+                      </a>
+                    </>
+                  )}
+                  <button
+                    onClick={() => navigate(`/preview/${username}`)}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
+                  >
+                    <Eye className="w-3 h-3" />
+                    Full Preview
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Main Content */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Editor Panel */}
           <div className="lg:col-span-2">
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
               {/* Tabs */}
-              <div className="flex border-b border-white/10">
+              <div className="flex border-b border-zinc-800">
                 {tabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex-1 px-6 py-4 text-sm font-medium transition-all ${
                       activeTab === tab.id
-                        ? 'bg-white/10 text-white border-b-2 border-blue-500'
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        ? 'bg-zinc-800 text-white border-b-2 border-white'
+                        : 'text-slate-400 hover:text-white hover:bg-zinc-800/50'
                     }`}
                   >
                     <span className="flex items-center justify-center gap-2">
@@ -165,6 +250,9 @@ export default function EditPage() {
                   <SkillsEditor
                     portfolio={portfolio}
                     updateSkills={updateSkills}
+                    addSkill={addSkill}
+                    allData={allData}
+                    onShowAddModal={() => setShowAddModal('skills')}
                   />
                 )}
                 
@@ -174,6 +262,9 @@ export default function EditPage() {
                     updateProject={updateProject}
                     addProject={addProject}
                     removeProject={removeProject}
+                    moveProject={moveProject}
+                    allData={allData}
+                    onShowAddModal={() => setShowAddModal('projects')}
                   />
                 )}
               </div>
@@ -183,12 +274,224 @@ export default function EditPage() {
           {/* Live Preview Panel */}
           <div className="lg:col-span-1">
             <div className="sticky top-6">
-              <PreviewPanel portfolio={portfolio} />
+              {/* Preview Type Toggle */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-t-lg p-3 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-white">Live Preview</h3>
+                <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setPreviewType('html')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${
+                      previewType === 'html'
+                        ? 'bg-white text-zinc-900'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    HTML
+                  </button>
+                  <button
+                    onClick={() => setPreviewType('pdf')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${
+                      previewType === 'pdf'
+                        ? 'bg-white text-zinc-900'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    PDF
+                  </button>
+                </div>
+              </div>
+              
+              {/* Preview Content */}
+              <div className="border-t-0">
+                {previewType === 'html' ? (
+                  <LivePreview portfolio={portfolio} />
+                ) : (
+                  <LivePDFPreview portfolio={portfolio} />
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Add Modal */}
+        {showAddModal && (
+          <AddModal
+            type={showAddModal}
+            allData={allData}
+            portfolio={portfolio}
+            onAdd={(item) => {
+              if (showAddModal === 'skills') {
+                addSkill(item);
+              } else {
+                addProject(item);
+              }
+              setShowAddModal(null);
+            }}
+            onClose={() => setShowAddModal(null)}
+          />
+        )}
       </div>
     </div>
   );
 }
 
+function AddModal({ type, allData, portfolio, onAdd, onClose }) {
+  const [selected, setSelected] = useState(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Get all available items from the fetched GitHub data
+  const getAllItems = () => {
+    if (type === 'skills') {
+      return allData?.portfolio?.skills || [];
+    } else {
+      // Get all repositories from the raw data
+      const rawRepos = allData?.raw_data?.repositories || [];
+      const portfolioProjects = allData?.portfolio?.top_projects || [];
+      
+      // Combine both sources and deduplicate by name
+      const allProjects = [...portfolioProjects];
+      rawRepos.forEach(repo => {
+        if (!allProjects.some(p => p.name === repo.name)) {
+          allProjects.push({
+            name: repo.name,
+            description: repo.description,
+            url: repo.url,
+            stargazers_count: repo.stargazers?.totalCount || repo.stargazer_count || 0,
+            forks_count: repo.forkCount || repo.forks_count || 0,
+            watchers_count: repo.watchers?.totalCount || repo.watchers_count || 0,
+            language: repo.primaryLanguage?.name || repo.language,
+            updated_at: repo.updatedAt || repo.updated_at,
+          });
+        }
+      });
+      return allProjects;
+    }
+  };
+
+  const allItems = getAllItems();
+  
+  // Filter out items already in portfolio
+  const availableItems = type === 'skills'
+    ? allItems.filter(skill => !portfolio.skills?.includes(skill))
+    : allItems.filter(proj => !portfolio.top_projects?.some(p => p.name === proj.name));
+
+  // Apply search filter
+  const filteredItems = searchTerm
+    ? availableItems.filter(item => {
+        if (type === 'skills') {
+          return item.toLowerCase().includes(searchTerm.toLowerCase());
+        } else {
+          return (
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+      })
+    : availableItems;
+
+  const handleAdd = () => {
+    selected.forEach(item => onAdd(item));
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-zinc-800">
+          <h2 className="text-xl font-bold text-white">
+            Add {type === 'skills' ? 'Skills' : 'Projects'}
+          </h2>
+          <p className="text-sm text-slate-400 mt-1">
+            Select from your GitHub data ({availableItems.length} available)
+          </p>
+          
+          {/* Search Box */}
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={`Search ${type === 'skills' ? 'skills' : 'repositories'}...`}
+            className="mt-4 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-zinc-600"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {filteredItems.length === 0 ? (
+            <p className="text-slate-400 text-center py-8">
+              {searchTerm ? `No ${type} found matching "${searchTerm}"` : `No more ${type} available to add`}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {filteredItems.map((item, index) => (
+                <label
+                  key={index}
+                  className="flex items-center gap-3 p-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg cursor-pointer transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(item)}
+                    onChange={(e) => {
+                      const newSelected = new Set(selected);
+                      if (e.target.checked) {
+                        newSelected.add(item);
+                      } else {
+                        newSelected.delete(item);
+                      }
+                      setSelected(newSelected);
+                    }}
+                    className="w-4 h-4 rounded border-zinc-600 text-white focus:ring-2 focus:ring-zinc-600"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white text-sm font-medium">
+                        {type === 'skills' ? item : item.name}
+                      </span>
+                      {type === 'projects' && item.language && (
+                        <span className="text-xs text-slate-500">
+                          {item.language}
+                        </span>
+                      )}
+                    </div>
+                    {type === 'projects' && (
+                      <div className="mt-1">
+                        {item.description && (
+                          <p className="text-slate-400 text-xs mb-1 truncate">
+                            {item.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                          {item.stargazers_count > 0 && (
+                            <span>⭐ {item.stargazers_count}</span>
+                          )}
+                          {item.forks_count > 0 && (
+                            <span>🔱 {item.forks_count}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 border-t border-zinc-800 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded-lg transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAdd}
+            disabled={selected.size === 0}
+            className="flex-1 px-4 py-2 bg-white hover:bg-zinc-100 disabled:bg-zinc-800 text-zinc-900 disabled:text-slate-500 rounded-lg transition-all disabled:cursor-not-allowed"
+          >
+            Add {selected.size > 0 && `(${selected.size})`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

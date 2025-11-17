@@ -1,0 +1,182 @@
+{
+  "name": "Eliad Shahar",
+  "avatarUrl": "https://avatars.githubusercontent.com/u/54673680?u=cfbd18fc914731ac551bd42475c4b2d7079263db&v=4",
+  "headline": "Team Player specializing in JavaScript, Python, Java",
+  "summary": "Eliad Shahar is a collaborates well with others through reviews and contributions with 128 commits and 2,993 followers.",
+  "location": null,
+  "websiteUrl": "https://www.eli-ad.com/",
+  "skills": [
+    "JavaScript",
+    "Python",
+    "Java",
+    "TypeScript",
+    "C++",
+    "C",
+    "PHP",
+    "C#",
+    "Shell",
+    "Ruby"
+  ],
+  "strengths": [
+    "Strong in JavaScript",
+    "Strong in Python",
+    "Strong in Java"
+  ],
+  "behavior_profile": {
+    "type": "Team Player",
+    "description": "Collaborates well with others through reviews and contributions",
+    "traits": [
+      "Collaborative",
+      "Code reviewer",
+      "Community-engaged"
+    ],
+    "primary": "team_player",
+    "secondary": [
+      "learner"
+    ],
+    "all": [
+      "team_player",
+      "learner"
+    ]
+  },
+  "top_projects": [
+    {
+      "name": "n8n-workflows",
+      "url": "https://github.com/Zie619/n8n-workflows",
+      "description": "all of the workflows of n8n i could find (also from the site itself)",
+      "primaryLanguage": "Python",
+      "tech": [
+        "Python",
+        "HTML",
+        "JavaScript",
+        "Shell",
+        "Dockerfile"
+      ],
+      "stars": 41114,
+      "forks": 4084,
+      "commits": 88,
+      "role": "owner",
+      "timeline": "2025-05-14 to 2025-11-17",
+      "highlights": [
+        "41114 stars, updated 0.0 months ago"
+      ],
+      "impact": "Popular repo with 41114 stars"
+    },
+    {
+      "name": "automation-stack",
+      "url": "https://github.com/Zie619/automation-stack",
+      "description": null,
+      "primaryLanguage": "Go",
+      "tech": [
+        "Go",
+        "Python",
+        "JavaScript",
+        "CSS",
+        "Dockerfile"
+      ],
+      "stars": 112,
+      "forks": 79,
+      "commits": 1,
+      "role": "owner",
+      "timeline": "2025-06-07 to 2025-11-15",
+      "highlights": [
+        "112 stars, updated 0.1 months ago"
+      ],
+      "impact": "Popular repo with 112 stars"
+    },
+    {
+      "name": "whatsapp-mcp-n8n",
+      "url": "https://github.com/Zie619/whatsapp-mcp-n8n",
+      "description": null,
+      "primaryLanguage": "Python",
+      "tech": [
+        "Python",
+        "Go",
+        "Shell"
+      ],
+      "stars": 87,
+      "forks": 53,
+      "commits": 5,
+      "role": "owner",
+      "timeline": "2025-06-27 to 2025-11-16",
+      "highlights": [
+        "87 stars, updated 0.0 months ago"
+      ],
+      "impact": "Popular repo with 87 stars"
+    },
+    {
+      "name": "n8n_chat_bot_webhook_supabase",
+      "url": "https://github.com/Zie619/n8n_chat_bot_webhook_supabase",
+      "description": null,
+      "primaryLanguage": "TypeScript",
+      "tech": [
+        "TypeScript",
+        "PLpgSQL",
+        "JavaScript",
+        "Python",
+        "Shell"
+      ],
+      "stars": 22,
+      "forks": 12,
+      "commits": 4,
+      "role": "owner",
+      "timeline": "2025-07-30 to 2025-10-20",
+      "highlights": [
+        "22 stars, updated 0.9 months ago"
+      ],
+      "impact": "Popular repo with 22 stars"
+    },
+    {
+      "name": "Eckstein",
+      "url": "https://github.com/Zie619/Eckstein",
+      "description": null,
+      "primaryLanguage": "Swift",
+      "tech": [
+        "Swift",
+        "PLpgSQL",
+        "Shell"
+      ],
+      "stars": 8,
+      "forks": 3,
+      "commits": 1,
+      "role": "owner",
+      "timeline": "2025-07-31 to 2025-10-20",
+      "highlights": [
+        "8 stars, updated 0.9 months ago"
+      ],
+      "impact": "Active project"
+    },
+    {
+      "name": "Railway-n8n-ms",
+      "url": "https://github.com/Zie619/Railway-n8n-ms",
+      "description": null,
+      "primaryLanguage": "JavaScript",
+      "tech": [
+        "JavaScript",
+        "Dockerfile"
+      ],
+      "stars": 8,
+      "forks": 1,
+      "commits": 29,
+      "role": "owner",
+      "timeline": "2025-10-01 to 2025-11-03",
+      "highlights": [
+        "8 stars, updated 0.5 months ago"
+      ],
+      "impact": "Active project"
+    }
+  ],
+  "total_stats": {
+    "followers": 2993,
+    "total_stars": 41395,
+    "total_forks": 4267,
+    "total_commits": 128,
+    "total_pr_reviews": 0,
+    "total_issues_solved": 1
+  },
+  "meta": {
+    "github_username": "Zie619",
+    "generated_at": "2025-11-17T16:36:12.543646",
+    "model_version": "improved"
+  }
+}

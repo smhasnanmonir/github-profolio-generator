@@ -30,9 +30,9 @@ export const usePortfolio = (initialData = null) => {
       }
       
       current[keys[keys.length - 1]] = value;
-      setHasChanges(true);
       return newData;
     });
+    setHasChanges(true);
   };
 
   const updateProject = (index, field, value) => {
@@ -61,10 +61,39 @@ export const usePortfolio = (initialData = null) => {
     setHasChanges(true);
   };
 
+  const moveProject = (fromIndex, toIndex) => {
+    setPortfolio(prev => {
+      const projects = [...prev.top_projects];
+      const [removed] = projects.splice(fromIndex, 1);
+      projects.splice(toIndex, 0, removed);
+      return {
+        ...prev,
+        top_projects: projects,
+      };
+    });
+    setHasChanges(true);
+  };
+
   const updateSkills = (skills) => {
     setPortfolio(prev => ({
       ...prev,
       skills,
+    }));
+    setHasChanges(true);
+  };
+
+  const addSkill = (skill) => {
+    setPortfolio(prev => ({
+      ...prev,
+      skills: [...(prev.skills || []), skill],
+    }));
+    setHasChanges(true);
+  };
+
+  const removeSkill = (index) => {
+    setPortfolio(prev => ({
+      ...prev,
+      skills: prev.skills.filter((_, i) => i !== index),
     }));
     setHasChanges(true);
   };
@@ -96,10 +125,12 @@ export const usePortfolio = (initialData = null) => {
     updateProject,
     addProject,
     removeProject,
+    moveProject,
     updateSkills,
+    addSkill,
+    removeSkill,
     reset,
     saveToLocalStorage,
     loadFromLocalStorage,
   };
 };
-
