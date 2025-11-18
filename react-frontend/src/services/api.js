@@ -46,6 +46,24 @@ export const api = {
     return res.json();
   },
 
+  // Generate portfolio from edited data
+  generateFromEdited: async (portfolioData) => {
+    const res = await fetch(`${API_BASE}/api/generate-from-edited`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        portfolio: portfolioData,
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(error);
+    }
+
+    return res.json();
+  },
+
   // Get latest generated files
   getLatestOutputs: async () => {
     const res = await fetch(`${API_BASE}/api/latest`);

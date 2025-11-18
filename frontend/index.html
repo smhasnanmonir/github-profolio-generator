@@ -9,30 +9,34 @@
     <script defer src="script.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400&display=swap"
+        rel="stylesheet">
 </head>
 
 <body>
     <div class="container animate-in">
         <h1>🤖 AI Portfolio Generator</h1>
         <p class="subtitle">Transform your GitHub profile into a professional portfolio powered by machine learning</p>
-        
+
         <!-- Features Overview -->
         <div class="feature-grid">
             <div class="feature-card">
                 <div class="feature-icon">🧠</div>
                 <div class="feature-title">ML-Powered Analysis</div>
-                <div class="feature-desc">Advanced machine learning models analyze your GitHub activity to extract meaningful insights</div>
+                <div class="feature-desc">Advanced machine learning models analyze your GitHub activity to extract
+                    meaningful insights</div>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">📊</div>
                 <div class="feature-title">Behavioral Profiling</div>
-                <div class="feature-desc">Identifies your developer type: Maintainer, Innovator, Team Player, or Learner</div>
+                <div class="feature-desc">Identifies your developer type: Maintainer, Innovator, Team Player, or Learner
+                </div>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🎯</div>
                 <div class="feature-title">Smart Ranking</div>
-                <div class="feature-desc">Intelligently ranks your top projects based on impact and technical complexity</div>
+                <div class="feature-desc">Intelligently ranks your top projects based on impact and technical complexity
+                </div>
             </div>
         </div>
 
@@ -40,39 +44,30 @@
         <form id="fetchForm">
             <label for="token">
                 🔑 GitHub Personal Access Token
-                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: none; font-weight: 400; margin-left: 0.5rem;">
+                <span
+                    style="font-size: 0.8rem; color: hsl(var(--muted-foreground)); text-transform: none; font-weight: 400; margin-left: 0.5rem;">
                     (Required for API access)
                 </span>
             </label>
-            <input 
-                type="password" 
-                id="token" 
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" 
-                required 
-                autocomplete="off"
-            />
-            
+            <input type="password" id="token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" required autocomplete="off" />
+
             <label for="profile">
                 👤 GitHub Profile URL or Username
             </label>
-            <input 
-                type="text" 
-                id="profile" 
-                placeholder="https://github.com/torvalds or just torvalds" 
-                required 
-            />
-            
+            <input type="text" id="profile" placeholder="https://github.com/torvalds or just torvalds" required />
+
             <div class="button-group">
                 <button type="button" id="fetchBtn">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        <path d="M9 12l2 2 4-4"/>
+                        <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path d="M9 12l2 2 4-4" />
                     </svg>
                     Fetch GitHub Data
                 </button>
                 <button id="portfolioBtn" type="button">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        <path
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Generate Portfolio (HTML & PDF)
                 </button>
@@ -91,18 +86,22 @@
                 <div class="preview-title">📄 Portfolio Preview</div>
                 <div class="preview-actions">
                     <button class="icon-button" id="refreshPreview" title="Refresh Preview">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                     </button>
                     <button class="icon-button" id="fullscreenPreview" title="Fullscreen">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path
+                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                         </svg>
                     </button>
                 </div>
             </div>
-            <iframe id="preview" style="width:100%; height:70vh; border:none; border-radius:16px;"></iframe>
+            <iframe id="preview" style="width:100%; height:70vh;"></iframe>
         </div>
 
         <!-- Output/Debug Section -->

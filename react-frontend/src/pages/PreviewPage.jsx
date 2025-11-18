@@ -1,35 +1,76 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Edit, ExternalLink, Loader2, FileText, FileType } from 'lucide-react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import api from '../services/api';
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Download,
+  Edit,
+  ExternalLink,
+  Loader2,
+  FileText,
+  FileType,
+} from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import api from "../services/api";
 
 export default function PreviewPage() {
   const { username } = useParams();
   const navigate = useNavigate();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isGeneratingHTML, setIsGeneratingHTML] = useState(false);
+  const [portfolio, setPortfolio] = useState(null);
+  const [needsRegeneration, setNeedsRegeneration] = useState(false);
 
-  // Load portfolio from localStorage
-  const portfolio = JSON.parse(localStorage.getItem(`portfolio_${username}`) || 'null');
+  // Load portfolio from localStorage - reactive to changes
+  useEffect(() => {
+    const loadPortfolio = () => {
+      const saved = localStorage.getItem(`portfolio_${username}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setPortfolio(parsed);
+          // Check if we need to regenerate (if outputs exist but portfolio was edited)
+          setNeedsRegeneration(true);
+        } catch (e) {
+          console.error("Failed to parse portfolio:", e);
+        }
+      }
+    };
+
+    loadPortfolio();
+    // Listen for storage changes (when user edits in another tab/window)
+    window.addEventListener("storage", loadPortfolio);
+    return () => window.removeEventListener("storage", loadPortfolio);
+  }, [username]);
 
   // Get latest outputs from backend
-  const { data: outputs, isLoading, refetch } = useQuery({
-    queryKey: ['latest-outputs'],
+  const {
+    data: outputs,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["latest-outputs"],
     queryFn: api.getLatestOutputs,
     retry: false,
     refetchInterval: isGeneratingPDF || isGeneratingHTML ? 2000 : false,
   });
 
-  // Regenerate portfolio mutation
+  // Regenerate portfolio mutation - now uses edited portfolio data
   const regenerateMutation = useMutation({
     mutationFn: () => {
-      const token = localStorage.getItem('gh_token');
-      return api.generatePortfolio(token, username);
+      // Reload portfolio from localStorage to ensure we have latest edits
+      const latestPortfolio = JSON.parse(
+        localStorage.getItem(`portfolio_${username}`) || "null"
+      );
+      if (!latestPortfolio) {
+        throw new Error("No portfolio data found");
+      }
+      // Use current edited portfolio instead of regenerating from GitHub
+      return api.generateFromEdited(latestPortfolio);
     },
     onMutate: () => {
       setIsGeneratingHTML(true);
       setIsGeneratingPDF(true);
+      setNeedsRegeneration(false);
     },
     onSuccess: () => {
       refetch();
@@ -44,13 +85,74 @@ export default function PreviewPage() {
     },
   });
 
+  // Handle download with auto-regeneration if needed
+  const handleDownload = useCallback(
+    async (type) => {
+      // Reload portfolio to ensure we have latest edits
+      const latestPortfolio = JSON.parse(
+        localStorage.getItem(`portfolio_${username}`) || "null"
+      );
+
+      if (!latestPortfolio) {
+        alert("No portfolio data found. Please generate a portfolio first.");
+        return;
+      }
+
+      // Get current outputs state
+      const currentOutputs = outputs;
+
+      // If outputs don't exist or portfolio was edited, regenerate first
+      if (!currentOutputs?.html_path || !currentOutputs?.pdf_path || needsRegeneration) {
+        // Show loading state
+        setIsGeneratingHTML(true);
+        setIsGeneratingPDF(true);
+
+        try {
+          // Regenerate with latest portfolio data
+          await api.generateFromEdited(latestPortfolio);
+          // Wait a bit for files to be ready, then refetch
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          const refetchedData = await refetch();
+          setIsGeneratingHTML(false);
+          setIsGeneratingPDF(false);
+          setNeedsRegeneration(false);
+
+          // Get updated outputs from refetch
+          const updatedOutputs = refetchedData.data || currentOutputs;
+          
+          // Retry download after regeneration
+          setTimeout(() => {
+            if (type === "html" && updatedOutputs?.html_path) {
+              window.open(api.getDownloadUrl(updatedOutputs.html_path), "_blank");
+            } else if (type === "pdf" && updatedOutputs?.pdf_path) {
+              window.open(api.getDownloadUrl(updatedOutputs.pdf_path), "_blank");
+            }
+          }, 1000);
+        } catch (error) {
+          console.error("Failed to regenerate:", error);
+          alert("Failed to regenerate portfolio. Please try again.");
+          setIsGeneratingHTML(false);
+          setIsGeneratingPDF(false);
+        }
+      } else {
+        // Download existing files
+        if (type === "html" && currentOutputs.html_path) {
+          window.open(api.getDownloadUrl(currentOutputs.html_path), "_blank");
+        } else if (type === "pdf" && currentOutputs.pdf_path) {
+          window.open(api.getDownloadUrl(currentOutputs.pdf_path), "_blank");
+        }
+      }
+    },
+    [outputs, needsRegeneration, username, refetch]
+  );
+
   if (!portfolio) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-slate-400 mb-4">Portfolio not found</p>
           <button
-            onClick={() => navigate('/generate')}
+            onClick={() => navigate("/generate")}
             className="px-6 py-3 bg-white hover:bg-zinc-100 text-zinc-900 rounded-lg transition-all"
           >
             Generate Portfolio
@@ -107,12 +209,21 @@ export default function PreviewPage() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-medium text-white mb-1">Export Portfolio</h3>
-                <p className="text-xs text-slate-400">Download your portfolio in different formats</p>
+                <h3 className="text-sm font-medium text-white mb-1">
+                  Export Portfolio
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Download your portfolio in different formats
+                  {needsRegeneration && (
+                    <span className="block mt-1 text-yellow-400">
+                      ⚠️ Portfolio was edited - click download to regenerate with latest changes
+                    </span>
+                  )}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 {/* HTML Download */}
-                {outputs?.html_path ? (
+                {outputs?.html_path && !isGeneratingHTML ? (
                   <>
                     <a
                       href={api.getViewUrl(outputs.html_path)}
@@ -123,15 +234,24 @@ export default function PreviewPage() {
                       <ExternalLink className="w-4 h-4" />
                       View HTML
                     </a>
-                    
-                    <a
-                      href={api.getDownloadUrl(outputs.html_path)}
-                      download
-                      className="px-4 py-2 bg-white hover:bg-zinc-100 text-zinc-900 rounded-lg flex items-center gap-2 transition-all text-sm font-medium"
+
+                    <button
+                      onClick={() => handleDownload("html")}
+                      disabled={isGeneratingHTML || isGeneratingPDF}
+                      className="px-4 py-2 bg-white hover:bg-zinc-100 disabled:bg-zinc-800 disabled:text-slate-500 text-zinc-900 disabled:text-slate-500 rounded-lg flex items-center gap-2 transition-all text-sm font-medium disabled:cursor-not-allowed"
                     >
-                      <Download className="w-4 h-4" />
-                      Download HTML
-                    </a>
+                      {isGeneratingHTML ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          Download HTML
+                        </>
+                      )}
+                    </button>
                   </>
                 ) : isGeneratingHTML ? (
                   <div className="px-4 py-2 bg-zinc-800 border border-zinc-700 text-slate-400 rounded-lg flex items-center gap-2 text-sm">
@@ -139,13 +259,27 @@ export default function PreviewPage() {
                     Generating HTML...
                   </div>
                 ) : (
-                  <div className="px-4 py-2 bg-zinc-800 border border-zinc-700 text-slate-500 rounded-lg text-sm">
-                    HTML not ready
-                  </div>
+                  <button
+                    onClick={() => handleDownload("html")}
+                    disabled={isGeneratingHTML || isGeneratingPDF}
+                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded-lg flex items-center gap-2 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingHTML ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Generate & Download HTML
+                      </>
+                    )}
+                  </button>
                 )}
 
                 {/* PDF Download */}
-                {outputs?.pdf_path ? (
+                {outputs?.pdf_path && !isGeneratingPDF ? (
                   <>
                     <a
                       href={api.getViewUrl(outputs.pdf_path)}
@@ -156,15 +290,24 @@ export default function PreviewPage() {
                       <ExternalLink className="w-4 h-4" />
                       View PDF
                     </a>
-                    
-                    <a
-                      href={api.getDownloadUrl(outputs.pdf_path)}
-                      download
-                      className="px-4 py-2 bg-white hover:bg-zinc-100 text-zinc-900 rounded-lg flex items-center gap-2 transition-all text-sm font-medium"
+
+                    <button
+                      onClick={() => handleDownload("pdf")}
+                      disabled={isGeneratingHTML || isGeneratingPDF}
+                      className="px-4 py-2 bg-white hover:bg-zinc-100 disabled:bg-zinc-800 disabled:text-slate-500 text-zinc-900 disabled:text-slate-500 rounded-lg flex items-center gap-2 transition-all text-sm font-medium disabled:cursor-not-allowed"
                     >
-                      <Download className="w-4 h-4" />
-                      Download PDF
-                    </a>
+                      {isGeneratingPDF ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          Download PDF
+                        </>
+                      )}
+                    </button>
                   </>
                 ) : isGeneratingPDF ? (
                   <div className="px-4 py-2 bg-zinc-800 border border-zinc-700 text-slate-400 rounded-lg flex items-center gap-2 text-sm">
@@ -172,9 +315,23 @@ export default function PreviewPage() {
                     Generating PDF...
                   </div>
                 ) : (
-                  <div className="px-4 py-2 bg-zinc-800 border border-zinc-700 text-slate-500 rounded-lg text-sm">
-                    PDF not ready
-                  </div>
+                  <button
+                    onClick={() => handleDownload("pdf")}
+                    disabled={isGeneratingHTML || isGeneratingPDF}
+                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded-lg flex items-center gap-2 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingPDF ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Generate & Download PDF
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             </div>
@@ -192,7 +349,7 @@ export default function PreviewPage() {
             <iframe
               src={api.getViewUrl(outputs.html_path)}
               className="w-full"
-              style={{ height: 'calc(100vh - 180px)' }}
+              style={{ height: "calc(100vh - 180px)" }}
               title="Portfolio Preview"
             />
           ) : (
@@ -217,7 +374,7 @@ export default function PreviewPage() {
                     Generating...
                   </>
                 ) : (
-                  'Generate Portfolio'
+                  "Generate Portfolio"
                 )}
               </button>
             </div>

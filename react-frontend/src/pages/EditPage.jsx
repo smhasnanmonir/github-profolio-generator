@@ -1,36 +1,54 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Eye, Download, Loader2, Plus, FileText, FileType, ExternalLink } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { usePortfolio } from '../hooks/usePortfolio';
-import api from '../services/api';
-import ProfileEditor from '../components/editor/ProfileEditor';
-import BehaviorEditor from '../components/editor/BehaviorEditor';
-import SkillsEditor from '../components/editor/SkillsEditor';
-import ProjectsEditor from '../components/editor/ProjectsEditor';
-import LivePreview from '../components/preview/LivePreview';
-import LivePDFPreview from '../components/preview/LivePDFPreview';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Save,
+  Eye,
+  Download,
+  Loader2,
+  FileText,
+  ExternalLink,
+} from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { usePortfolio } from "../hooks/usePortfolio";
+import api from "../services/api";
+import ProfileEditor from "../components/editor/ProfileEditor";
+import BehaviorEditor from "../components/editor/BehaviorEditor";
+import SkillsEditor from "../components/editor/SkillsEditor";
+import ProjectsEditor from "../components/editor/ProjectsEditor";
+import LivePreview from "../components/preview/LivePreview";
+import LivePDFPreview from "../components/preview/LivePDFPreview";
+
+const parseLocalStorageJSON = (key) => {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error(`Failed to parse ${key}`, error);
+    window.localStorage.removeItem(key);
+    return null;
+  }
+};
 
 export default function EditPage() {
   const { username } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('profile');
-  const [previewType, setPreviewType] = useState('html'); // 'html' or 'pdf'
+  const [activeTab, setActiveTab] = useState("profile");
+  const [previewType, setPreviewType] = useState("html"); // 'html' or 'pdf'
   const [isSaving, setIsSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(null); // 'skills' or 'projects'
 
   // Load portfolio and full data from localStorage
-  const savedData = localStorage.getItem(`portfolio_${username}`);
-  const fullData = localStorage.getItem(`portfolio_full_${username}`);
-  const initialData = savedData ? JSON.parse(savedData) : null;
-  const allData = fullData ? JSON.parse(fullData) : null;
-
-  // Get latest outputs for download buttons
-  const { data: outputs } = useQuery({
-    queryKey: ['latest-outputs'],
-    queryFn: api.getLatestOutputs,
-    retry: false,
-  });
+  const initialData = useMemo(
+    () => parseLocalStorageJSON(`portfolio_${username}`),
+    [username]
+  );
+  const allData = useMemo(
+    () => parseLocalStorageJSON(`portfolio_full_${username}`),
+    [username]
+  );
 
   const {
     portfolio,
@@ -43,13 +61,80 @@ export default function EditPage() {
     moveProject,
     updateSkills,
     addSkill,
-    reset,
     saveToLocalStorage,
   } = usePortfolio(initialData);
 
+  // Get latest outputs for download buttons
+  const { data: outputs, refetch: refetchOutputs } = useQuery({
+    queryKey: ["latest-outputs"],
+    queryFn: api.getLatestOutputs,
+    retry: false,
+  });
+
+  // Regenerate mutation for quick downloads
+  const regenerateMutation = useMutation({
+    mutationFn: () => {
+      // Save current portfolio first
+      if (hasChanges) {
+        saveToLocalStorage(username);
+      }
+      // Get latest from localStorage
+      const latestPortfolio = JSON.parse(
+        localStorage.getItem(`portfolio_${username}`) || "null"
+      );
+      if (!latestPortfolio) {
+        throw new Error("No portfolio data found");
+      }
+      return api.generateFromEdited(latestPortfolio);
+    },
+    onSuccess: () => {
+      refetchOutputs();
+    },
+  });
+
+  // Handle quick download with auto-regeneration
+  const handleQuickDownload = useCallback(
+    async (type) => {
+      // If there are changes, regenerate first
+      if (hasChanges) {
+        try {
+          await regenerateMutation.mutateAsync();
+          // Wait for files to be ready
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          const refetchedData = await refetchOutputs();
+          const updatedOutputs = refetchedData.data || outputs;
+          
+          // Download after regeneration
+          if (type === "html" && updatedOutputs?.html_path) {
+            window.open(api.getDownloadUrl(updatedOutputs.html_path), "_blank");
+          } else if (type === "pdf" && updatedOutputs?.pdf_path) {
+            window.open(api.getDownloadUrl(updatedOutputs.pdf_path), "_blank");
+          } else {
+            alert(`${type.toUpperCase()} file not available yet. Please wait a moment and try again.`);
+          }
+          return;
+        } catch (error) {
+          console.error("Failed to regenerate:", error);
+          alert("Failed to regenerate portfolio. Please try again.");
+          return;
+        }
+      }
+
+      // No changes - download existing files
+      if (type === "html" && outputs?.html_path) {
+        window.open(api.getDownloadUrl(outputs.html_path), "_blank");
+      } else if (type === "pdf" && outputs?.pdf_path) {
+        window.open(api.getDownloadUrl(outputs.pdf_path), "_blank");
+      } else {
+        alert(`${type.toUpperCase()} file not available. Please regenerate first.`);
+      }
+    },
+    [hasChanges, outputs, username, saveToLocalStorage, regenerateMutation, refetchOutputs]
+  );
+
   useEffect(() => {
     if (!portfolio) {
-      navigate('/generate');
+      navigate("/generate");
     }
   }, [portfolio, navigate]);
 
@@ -76,6 +161,27 @@ export default function EditPage() {
     navigate(`/preview/${username}`);
   };
 
+  if (!portfolio && !initialData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-6">
+        <h2 className="text-2xl font-semibold text-white">
+          No portfolio data found
+        </h2>
+        <p className="text-slate-400 max-w-md">
+          We couldn't find any saved data for{" "}
+          <span className="text-white font-medium">{username}</span>. Please
+          generate a portfolio first.
+        </p>
+        <button
+          onClick={() => navigate("/generate")}
+          className="px-6 py-3 bg-white text-zinc-900 rounded-lg font-medium hover:bg-zinc-100 transition-all"
+        >
+          Go to Generate Page
+        </button>
+      </div>
+    );
+  }
+
   if (!portfolio) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -85,10 +191,10 @@ export default function EditPage() {
   }
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'behavior', label: 'Behavior', icon: '🧠' },
-    { id: 'skills', label: 'Skills', icon: '⚡' },
-    { id: 'projects', label: 'Projects', icon: '🚀' },
+    { id: "profile", label: "Profile", icon: "👤" },
+    { id: "behavior", label: "Behavior", icon: "🧠" },
+    { id: "skills", label: "Skills", icon: "⚡" },
+    { id: "projects", label: "Projects", icon: "🚀" },
   ];
 
   return (
@@ -98,7 +204,7 @@ export default function EditPage() {
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex items-center justify-between">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
               className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -112,7 +218,7 @@ export default function EditPage() {
                   Auto-saving...
                 </span>
               )}
-              
+
               <button
                 onClick={handleSave}
                 disabled={!hasChanges || isSaving}
@@ -147,7 +253,16 @@ export default function EditPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm text-slate-300">Quick Download:</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-slate-300">
+                      Quick Download:
+                    </span>
+                    {hasChanges && (
+                      <span className="text-xs text-yellow-400 mt-0.5">
+                        ⚠️ Will regenerate with latest changes
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {outputs.html_path && (
@@ -161,14 +276,23 @@ export default function EditPage() {
                         <ExternalLink className="w-3 h-3" />
                         HTML
                       </a>
-                      <a
-                        href={api.getDownloadUrl(outputs.html_path)}
-                        download
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
+                      <button
+                        onClick={() => handleQuickDownload("html")}
+                        disabled={regenerateMutation.isPending}
+                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-900 border border-zinc-700 disabled:border-zinc-800 text-white disabled:text-slate-500 rounded text-xs flex items-center gap-1.5 transition-all disabled:cursor-not-allowed"
                       >
-                        <Download className="w-3 h-3" />
-                        HTML
-                      </a>
+                        {regenerateMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3 h-3" />
+                            HTML
+                          </>
+                        )}
+                      </button>
                     </>
                   )}
                   {outputs.pdf_path && (
@@ -182,14 +306,23 @@ export default function EditPage() {
                         <ExternalLink className="w-3 h-3" />
                         PDF
                       </a>
-                      <a
-                        href={api.getDownloadUrl(outputs.pdf_path)}
-                        download
-                        className="px-3 py-1.5 bg-white hover:bg-zinc-100 text-zinc-900 rounded text-xs flex items-center gap-1.5 transition-all font-medium"
+                      <button
+                        onClick={() => handleQuickDownload("pdf")}
+                        disabled={regenerateMutation.isPending}
+                        className="px-3 py-1.5 bg-white hover:bg-zinc-100 disabled:bg-zinc-800 text-zinc-900 disabled:text-slate-500 rounded text-xs flex items-center gap-1.5 transition-all font-medium disabled:cursor-not-allowed"
                       >
-                        <Download className="w-3 h-3" />
-                        PDF
-                      </a>
+                        {regenerateMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3 h-3" />
+                            PDF
+                          </>
+                        )}
+                      </button>
                     </>
                   )}
                   <button
@@ -212,14 +345,14 @@ export default function EditPage() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
               {/* Tabs */}
               <div className="flex border-b border-zinc-800">
-                {tabs.map(tab => (
+                {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex-1 px-6 py-4 text-sm font-medium transition-all ${
                       activeTab === tab.id
-                        ? 'bg-zinc-800 text-white border-b-2 border-white'
-                        : 'text-slate-400 hover:text-white hover:bg-zinc-800/50'
+                        ? "bg-zinc-800 text-white border-b-2 border-white"
+                        : "text-slate-400 hover:text-white hover:bg-zinc-800/50"
                     }`}
                   >
                     <span className="flex items-center justify-center gap-2">
@@ -232,31 +365,31 @@ export default function EditPage() {
 
               {/* Tab Content */}
               <div className="p-6">
-                {activeTab === 'profile' && (
+                {activeTab === "profile" && (
                   <ProfileEditor
                     portfolio={portfolio}
                     updateField={updateField}
                   />
                 )}
-                
-                {activeTab === 'behavior' && (
+
+                {activeTab === "behavior" && (
                   <BehaviorEditor
                     portfolio={portfolio}
                     updateNestedField={updateNestedField}
                   />
                 )}
-                
-                {activeTab === 'skills' && (
+
+                {activeTab === "skills" && (
                   <SkillsEditor
                     portfolio={portfolio}
                     updateSkills={updateSkills}
                     addSkill={addSkill}
                     allData={allData}
-                    onShowAddModal={() => setShowAddModal('skills')}
+                    onShowAddModal={() => setShowAddModal("skills")}
                   />
                 )}
-                
-                {activeTab === 'projects' && (
+
+                {activeTab === "projects" && (
                   <ProjectsEditor
                     portfolio={portfolio}
                     updateProject={updateProject}
@@ -264,7 +397,7 @@ export default function EditPage() {
                     removeProject={removeProject}
                     moveProject={moveProject}
                     allData={allData}
-                    onShowAddModal={() => setShowAddModal('projects')}
+                    onShowAddModal={() => setShowAddModal("projects")}
                   />
                 )}
               </div>
@@ -279,31 +412,31 @@ export default function EditPage() {
                 <h3 className="text-sm font-medium text-white">Live Preview</h3>
                 <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
                   <button
-                    onClick={() => setPreviewType('html')}
+                    onClick={() => setPreviewType("html")}
                     className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${
-                      previewType === 'html'
-                        ? 'bg-white text-zinc-900'
-                        : 'text-slate-400 hover:text-white'
+                      previewType === "html"
+                        ? "bg-white text-zinc-900"
+                        : "text-slate-400 hover:text-white"
                     }`}
                   >
                     HTML
                   </button>
                   <button
-                    onClick={() => setPreviewType('pdf')}
+                    onClick={() => setPreviewType("pdf")}
                     className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${
-                      previewType === 'pdf'
-                        ? 'bg-white text-zinc-900'
-                        : 'text-slate-400 hover:text-white'
+                      previewType === "pdf"
+                        ? "bg-white text-zinc-900"
+                        : "text-slate-400 hover:text-white"
                     }`}
                   >
                     PDF
                   </button>
                 </div>
               </div>
-              
+
               {/* Preview Content */}
               <div className="border-t-0">
-                {previewType === 'html' ? (
+                {previewType === "html" ? (
                   <LivePreview portfolio={portfolio} />
                 ) : (
                   <LivePDFPreview portfolio={portfolio} />
@@ -319,13 +452,13 @@ export default function EditPage() {
             type={showAddModal}
             allData={allData}
             portfolio={portfolio}
-            onAdd={(item) => {
-              if (showAddModal === 'skills') {
-                addSkill(item);
+            onAdd={(items) => {
+              if (!Array.isArray(items) || items.length === 0) return;
+              if (showAddModal === "skills") {
+                items.forEach((item) => addSkill(item));
               } else {
-                addProject(item);
+                items.forEach((item) => addProject(item));
               }
-              setShowAddModal(null);
             }}
             onClose={() => setShowAddModal(null)}
           />
@@ -337,28 +470,32 @@ export default function EditPage() {
 
 function AddModal({ type, allData, portfolio, onAdd, onClose }) {
   const [selected, setSelected] = useState(new Set());
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Get all available items from the fetched GitHub data
   const getAllItems = () => {
-    if (type === 'skills') {
-      return allData?.portfolio?.skills || [];
+    if (type === "skills") {
+      return (
+        allData?.skills || allData?.portfolio?.skills || portfolio.skills || []
+      );
     } else {
       // Get all repositories from the raw data
       const rawRepos = allData?.raw_data?.repositories || [];
       const portfolioProjects = allData?.portfolio?.top_projects || [];
-      
+
       // Combine both sources and deduplicate by name
       const allProjects = [...portfolioProjects];
-      rawRepos.forEach(repo => {
-        if (!allProjects.some(p => p.name === repo.name)) {
+      rawRepos.forEach((repo) => {
+        if (!allProjects.some((p) => p.name === repo.name)) {
           allProjects.push({
             name: repo.name,
             description: repo.description,
             url: repo.url,
-            stargazers_count: repo.stargazers?.totalCount || repo.stargazer_count || 0,
+            stargazers_count:
+              repo.stargazers?.totalCount || repo.stargazer_count || 0,
             forks_count: repo.forkCount || repo.forks_count || 0,
-            watchers_count: repo.watchers?.totalCount || repo.watchers_count || 0,
+            watchers_count:
+              repo.watchers?.totalCount || repo.watchers_count || 0,
             language: repo.primaryLanguage?.name || repo.language,
             updated_at: repo.updatedAt || repo.updated_at,
           });
@@ -369,28 +506,34 @@ function AddModal({ type, allData, portfolio, onAdd, onClose }) {
   };
 
   const allItems = getAllItems();
-  
+
   // Filter out items already in portfolio
-  const availableItems = type === 'skills'
-    ? allItems.filter(skill => !portfolio.skills?.includes(skill))
-    : allItems.filter(proj => !portfolio.top_projects?.some(p => p.name === proj.name));
+  const availableItems =
+    type === "skills"
+      ? allItems.filter((skill) => !portfolio.skills?.includes(skill))
+      : allItems.filter(
+          (proj) => !portfolio.top_projects?.some((p) => p.name === proj.name)
+        );
 
   // Apply search filter
   const filteredItems = searchTerm
-    ? availableItems.filter(item => {
-        if (type === 'skills') {
+    ? availableItems.filter((item) => {
+        if (type === "skills") {
           return item.toLowerCase().includes(searchTerm.toLowerCase());
         } else {
           return (
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+            (item.description || "")
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())
           );
         }
       })
     : availableItems;
 
   const handleAdd = () => {
-    selected.forEach(item => onAdd(item));
+    if (selected.size === 0) return;
+    onAdd(Array.from(selected));
     onClose();
   };
 
@@ -399,18 +542,20 @@ function AddModal({ type, allData, portfolio, onAdd, onClose }) {
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-zinc-800">
           <h2 className="text-xl font-bold text-white">
-            Add {type === 'skills' ? 'Skills' : 'Projects'}
+            Add {type === "skills" ? "Skills" : "Projects"}
           </h2>
           <p className="text-sm text-slate-400 mt-1">
             Select from your GitHub data ({availableItems.length} available)
           </p>
-          
+
           {/* Search Box */}
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={`Search ${type === 'skills' ? 'skills' : 'repositories'}...`}
+            placeholder={`Search ${
+              type === "skills" ? "skills" : "repositories"
+            }...`}
             className="mt-4 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-zinc-600"
           />
         </div>
@@ -418,7 +563,9 @@ function AddModal({ type, allData, portfolio, onAdd, onClose }) {
         <div className="flex-1 overflow-y-auto p-6">
           {filteredItems.length === 0 ? (
             <p className="text-slate-400 text-center py-8">
-              {searchTerm ? `No ${type} found matching "${searchTerm}"` : `No more ${type} available to add`}
+              {searchTerm
+                ? `No ${type} found matching "${searchTerm}"`
+                : `No more ${type} available to add`}
             </p>
           ) : (
             <div className="space-y-2">
@@ -444,15 +591,15 @@ function AddModal({ type, allData, portfolio, onAdd, onClose }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-white text-sm font-medium">
-                        {type === 'skills' ? item : item.name}
+                        {type === "skills" ? item : item.name}
                       </span>
-                      {type === 'projects' && item.language && (
+                      {type === "projects" && item.language && (
                         <span className="text-xs text-slate-500">
                           {item.language}
                         </span>
                       )}
                     </div>
-                    {type === 'projects' && (
+                    {type === "projects" && (
                       <div className="mt-1">
                         {item.description && (
                           <p className="text-slate-400 text-xs mb-1 truncate">

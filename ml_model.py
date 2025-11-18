@@ -1,7 +1,3 @@
-"""
-ML Model Training Script - Local Version
-Train ranking, skills, and behavior models on GitHub data
-"""
 
 # Fix Windows console encoding for emojis
 import sys

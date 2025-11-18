@@ -8,6 +8,7 @@ from organized_structure.generation.render_pdf import (
 )
 from pathlib import Path
 import json
+import copy
 from datetime import datetime
 from xhtml2pdf import pisa
 from fastapi.responses import FileResponse, Response
@@ -234,15 +235,23 @@ def create_portfolio(req: PortfolioRequest):
         with open(portfolio_json, "w", encoding="utf-8") as f:
             json.dump(portfolio, f, indent=2, ensure_ascii=False)
 
-        # Render HTML and PDF using render_pdf utilities
-        html_rendered = render_html_portfolio(str(portfolio_json), theme='professional')
-        pdf_rendered = render_pdf_portfolio(str(portfolio_json), theme='minimal')
+        # Create a limited copy for initial HTML/PDF rendering (top 5 skills, top 3 projects)
+        limited_portfolio = copy.deepcopy(portfolio)
+        limited_portfolio["skills"] = (limited_portfolio.get("skills") or [])[:5]
+        limited_portfolio["top_projects"] = (limited_portfolio.get("top_projects") or [])[:3]
+        limited_portfolio_json = generated / f"portfolio_limited_{username}_{timestamp}.json"
+        with open(limited_portfolio_json, "w", encoding="utf-8") as f:
+            json.dump(limited_portfolio, f, indent=2, ensure_ascii=False)
+
+        # Render HTML and PDF using limited portfolio for initial outputs
+        html_rendered = render_html_portfolio(str(limited_portfolio_json), theme='professional')
+        pdf_rendered = render_pdf_portfolio(str(limited_portfolio_json), theme='minimal')
 
         html_path = Path(html_rendered) if html_rendered else None
         pdf_path = None
         if not html_path or not html_path.exists():
             # Fallback: render simple HTML without jinja2
-            html_path = render_html_fallback(portfolio, generated, username, timestamp)
+            html_path = render_html_fallback(limited_portfolio, generated, username, timestamp)
 
         # Ensure final destinations
         html_final_dir = root / "generated_htmls"
@@ -268,7 +277,7 @@ def create_portfolio(req: PortfolioRequest):
             # Fallback to simple HTML-to-PDF
             if html_final and html_final.exists():
                 pdf_path = pdf_dir / (html_final.stem + ".pdf")
-                ok = html_to_pdf_simple(portfolio, pdf_path)
+                ok = html_to_pdf_simple(limited_portfolio, pdf_path)
                 if not ok:
                     pdf_path = None
 
@@ -356,14 +365,21 @@ def create_portfolio_from_data(req: PortfolioFromDataRequest):
         with open(portfolio_json, "w", encoding="utf-8") as f:
             json.dump(portfolio, f, indent=2, ensure_ascii=False)
 
+        limited_portfolio = copy.deepcopy(portfolio)
+        limited_portfolio["skills"] = (limited_portfolio.get("skills") or [])[:5]
+        limited_portfolio["top_projects"] = (limited_portfolio.get("top_projects") or [])[:3]
+        limited_portfolio_json = generated / f"portfolio_limited_{username}_{timestamp}.json"
+        with open(limited_portfolio_json, "w", encoding="utf-8") as f:
+            json.dump(limited_portfolio, f, indent=2, ensure_ascii=False)
+
         # Render with render_pdf
-        html_rendered = render_html_portfolio(str(portfolio_json), theme='professional')
-        pdf_rendered = render_pdf_portfolio(str(portfolio_json), theme='minimal')
+        html_rendered = render_html_portfolio(str(limited_portfolio_json), theme='professional')
+        pdf_rendered = render_pdf_portfolio(str(limited_portfolio_json), theme='minimal')
 
         html_path = Path(html_rendered) if html_rendered else None
         pdf_path = None
         if not html_path or not html_path.exists():
-            html_path = render_html_fallback(portfolio, generated, username, timestamp)
+            html_path = render_html_fallback(limited_portfolio, generated, username, timestamp)
 
         html_final_dir = root / "generated_htmls"
         html_final_dir.mkdir(parents=True, exist_ok=True)
@@ -386,7 +402,7 @@ def create_portfolio_from_data(req: PortfolioFromDataRequest):
         else:
             if html_final and html_final.exists():
                 pdf_path = pdf_dir / (html_final.stem + ".pdf")
-                ok = html_to_pdf_simple(portfolio, pdf_path)
+                ok = html_to_pdf_simple(limited_portfolio, pdf_path)
                 if not ok:
                     pdf_path = None
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { RefreshCw, Download, AlertCircle } from 'lucide-react';
 
 export default function LivePDFPreview({ portfolio }) {
@@ -327,6 +327,11 @@ export default function LivePDFPreview({ portfolio }) {
     `;
   };
 
+  const serializedPortfolio = useMemo(
+    () => JSON.stringify(portfolio || {}),
+    [portfolio]
+  );
+
   // Generate PDF on portfolio change
   useEffect(() => {
     if (portfolio) {
@@ -335,7 +340,7 @@ export default function LivePDFPreview({ portfolio }) {
       }, 500); // Debounce updates
       return () => clearTimeout(timer);
     }
-  }, [portfolio]);
+  }, [serializedPortfolio]);
 
   // Cleanup on unmount
   useEffect(() => {

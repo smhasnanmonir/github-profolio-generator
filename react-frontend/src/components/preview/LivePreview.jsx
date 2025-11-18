@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Star, GitFork, Users, RefreshCw } from 'lucide-react';
 
 export default function LivePreview({ portfolio }) {
@@ -267,6 +267,11 @@ export default function LivePreview({ portfolio }) {
     `;
   };
 
+  const serializedPortfolio = useMemo(
+    () => JSON.stringify(portfolio || {}),
+    [portfolio]
+  );
+
   // Update iframe content when portfolio changes
   useEffect(() => {
     if (iframeRef.current) {
@@ -276,7 +281,7 @@ export default function LivePreview({ portfolio }) {
       iframeDoc.write(html);
       iframeDoc.close();
     }
-  }, [portfolio]);
+  }, [serializedPortfolio]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

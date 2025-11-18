@@ -1,6 +1,11 @@
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from "lucide-react";
 
-export default function SkillsEditor({ portfolio, updateSkills, addSkill, allData, onShowAddModal }) {
+export default function SkillsEditor({
+  portfolio,
+  updateSkills,
+  addSkill,
+  onShowAddModal,
+}) {
   const skills = portfolio.skills || [];
 
   const handleRemoveSkill = (index) => {
@@ -9,8 +14,12 @@ export default function SkillsEditor({ portfolio, updateSkills, addSkill, allDat
   };
 
   const handleAddSkill = (skill) => {
-    if (skill.trim() && !skills.includes(skill.trim())) {
-      updateSkills([...skills, skill.trim()]);
+    const normalized = skill.trim();
+    if (!normalized || skills.includes(normalized)) return;
+    if (typeof addSkill === "function") {
+      addSkill(normalized);
+    } else {
+      updateSkills([...skills, normalized]);
     }
   };
 
@@ -66,7 +75,7 @@ export default function SkillsEditor({ portfolio, updateSkills, addSkill, allDat
             e.preventDefault();
             const input = e.target.elements.skill;
             handleAddSkill(input.value);
-            input.value = '';
+            input.value = "";
           }}
           className="flex gap-2"
         >
@@ -88,7 +97,8 @@ export default function SkillsEditor({ portfolio, updateSkills, addSkill, allDat
       {/* Info */}
       <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
         <p className="text-sm text-blue-300">
-          💡 <strong>Tip:</strong> Start with your top 5 skills. You can add more from your GitHub data or manually.
+          💡 <strong>Tip:</strong> Start with your top 5 skills. You can add
+          more from your GitHub data or manually.
         </p>
       </div>
     </div>

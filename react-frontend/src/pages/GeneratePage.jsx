@@ -40,9 +40,12 @@ export default function GeneratePage() {
       localStorage.setItem("gh_profile", extractedUsername);
 
       // Filter to top 5 skills and top 3 projects
+      const allSkills = Array.isArray(data.portfolio?.skills)
+        ? data.portfolio.skills
+        : [];
       const filteredPortfolio = {
         ...data.portfolio,
-        skills: (data.portfolio?.skills || []).slice(0, 5),
+        skills: allSkills.slice(0, 5),
         top_projects: (data.portfolio?.top_projects || []).slice(0, 3),
       };
 
@@ -55,6 +58,7 @@ export default function GeneratePage() {
       // Store full data with raw repositories for "Add from GitHub" feature
       const fullData = {
         portfolio: data.portfolio,
+        skills: allSkills,
         raw_data: {
           repositories: data.repositories || data.raw_data?.repositories || [],
           user: data.user || data.raw_data?.user || {},

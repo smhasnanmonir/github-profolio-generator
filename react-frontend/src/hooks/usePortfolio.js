@@ -83,10 +83,16 @@ export const usePortfolio = (initialData = null) => {
   };
 
   const addSkill = (skill) => {
-    setPortfolio(prev => ({
-      ...prev,
-      skills: [...(prev.skills || []), skill],
-    }));
+    setPortfolio(prev => {
+      const existing = prev.skills || [];
+      if (existing.includes(skill)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        skills: [...existing, skill],
+      };
+    });
     setHasChanges(true);
   };
 
