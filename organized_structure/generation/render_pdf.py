@@ -12,8 +12,41 @@ from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER, TA_JUSTIFY
 
 def render_html_portfolio(portfolio_json_path, theme='professional'):
     """Render portfolio to professional HTML with clean, corporate design."""
+    print(f"[render_html_portfolio] Reading portfolio from: {portfolio_json_path}")
     with open(portfolio_json_path, 'r') as f:
         portfolio = json.load(f)
+    print(f"[render_html_portfolio] Loaded portfolio: name={portfolio.get('name')}, skills={len(portfolio.get('skills', []))}, projects={len(portfolio.get('top_projects', []))}")
+
+    # Filter out empty behavior_profile fields before creating template
+    if portfolio.get('behavior_profile'):
+        original_behavior = portfolio['behavior_profile'].copy() if isinstance(portfolio['behavior_profile'], dict) else {}
+        filtered_behavior = {}
+        for key, value in original_behavior.items():
+            # Skip None
+            if value is None:
+                continue
+            # Skip empty strings (including whitespace-only)
+            if isinstance(value, str) and value.strip() == '':
+                continue
+            # Skip empty lists/tuples
+            if isinstance(value, (list, tuple)) and len(value) == 0:
+                continue
+            # Handle lists/tuples - filter out empty items
+            if isinstance(value, (list, tuple)):
+                filtered_list = [str(v).strip() for v in value if v is not None and str(v).strip()]
+                if len(filtered_list) == 0:
+                    continue
+                filtered_behavior[key] = filtered_list
+            else:
+                # Handle other types (strings, numbers, etc.)
+                str_value = str(value).strip()
+                if str_value == '':
+                    continue
+                filtered_behavior[key] = value
+        
+        # Replace with filtered version (even if empty - template will check length)
+        portfolio['behavior_profile'] = filtered_behavior
+        print(f"[render_html_portfolio] Behavior profile filtered: {len(original_behavior)} -> {len(filtered_behavior)} fields")
 
     # Create folders if they don't exist
     html_dir = 'generated_htmls'
@@ -36,30 +69,43 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
         }
 
         :root {
-            --primary-color: {% if theme == 'professional' %}#0f172a{% else %}#1e293b{% endif %};
-            --secondary-color: {% if theme == 'professional' %}#1e40af{% else %}#475569{% endif %};
-            --accent-color: {% if theme == 'professional' %}#3b82f6{% else %}#64748b{% endif %};
-            --accent-gradient: {% if theme == 'professional' %}linear-gradient(135deg, #667eea 0%, #764ba2 100%){% else %}linear-gradient(135deg, #667eea 0%, #764ba2 100%){% endif %};
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --text-light: #64748b;
-            --background-primary: #ffffff;
-            --background-secondary: #f8fafc;
-            --background-tertiary: #f1f5f9;
-            --border-color: #e2e8f0;
-            --border-light: #f1f5f9;
+            /* shadcn/ui inspired color palette - neutral, professional */
+            --background: #ffffff;
+            --foreground: #09090b;
+            --card: #ffffff;
+            --card-foreground: #09090b;
+            --border: #e4e4e7;
+            --input: #e4e4e7;
+            --primary: #09090b;
+            --primary-foreground: #fafafa;
+            --secondary: #f4f4f5;
+            --secondary-foreground: #09090b;
+            --muted: #f4f4f5;
+            --muted-foreground: #71717a;
+            --accent: #f4f4f5;
+            --accent-foreground: #09090b;
+            --ring: #09090b;
+            
+            /* Text colors */
+            --text-primary: #09090b;
+            --text-secondary: #52525b;
+            --text-muted: #71717a;
+            
+            /* Spacing */
+            --radius: 0.5rem;
+            
+            /* Shadows - subtle, clean */
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.7;
-            color: var(--text-primary);
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            background-attachment: fixed;
+            line-height: 1.6;
+            color: var(--foreground);
+            background: var(--muted);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -67,29 +113,15 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background-color: var(--background-primary);
+            background-color: var(--background);
             min-height: 100vh;
-            box-shadow: var(--shadow-xl);
-            border-radius: 0;
+            box-shadow: var(--shadow-lg);
         }
 
         .header {
-            background: var(--accent-gradient);
-            color: white;
-            padding: 3rem 2rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-            opacity: 0.3;
+            background: var(--background);
+            border-bottom: 1px solid var(--border);
+            padding: 4rem 2rem;
         }
 
         .header-content {
@@ -98,83 +130,79 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
             gap: 2.5rem;
             align-items: center;
             max-width: 100%;
-            position: relative;
-            z-index: 1;
         }
 
         .profile-avatar {
             width: 120px;
             height: 120px;
             border-radius: 50%;
-            border: 4px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid var(--border);
             object-fit: cover;
-            box-shadow: var(--shadow-xl);
-            transition: transform 0.3s ease;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s ease;
         }
 
         .profile-avatar:hover {
-            transform: scale(1.05);
+            transform: scale(1.02);
         }
 
         .profile-avatar-placeholder {
             width: 120px;
             height: 120px;
             border-radius: 50%;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
+            border: 2px solid var(--border);
+            background: var(--muted);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 2.5rem;
-            font-weight: 700;
-            color: white;
-            box-shadow: var(--shadow-xl);
+            font-weight: 600;
+            color: var(--text-muted);
+            box-shadow: var(--shadow-md);
         }
 
         .profile-info h1 {
-            font-size: 2.75rem;
+            font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
             letter-spacing: -0.02em;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            color: var(--foreground);
         }
 
         .profile-info .headline {
-            font-size: 1.25rem;
-            opacity: 0.95;
-            margin-bottom: 1.25rem;
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
             font-weight: 400;
             letter-spacing: -0.01em;
         }
 
         .contact-info {
             display: flex;
-            gap: 2rem;
+            gap: 1rem;
             flex-wrap: wrap;
         }
 
         .contact-item {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.95rem;
+            font-size: 0.875rem;
             padding: 0.5rem 1rem;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
+            background: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) * 0.5);
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
         }
 
         .contact-item:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            background: var(--accent);
+            border-color: var(--ring);
         }
 
         .contact-item a {
-            color: white;
+            color: var(--foreground);
             text-decoration: none;
             font-weight: 500;
         }
@@ -188,233 +216,191 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
         }
 
         .section {
-            margin-bottom: 3.5rem;
+            margin-bottom: 4rem;
         }
 
         .section-title {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--primary-color);
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--foreground);
             margin-bottom: 1.5rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 3px solid var(--accent-color);
-            letter-spacing: -0.02em;
-            position: relative;
-        }
-
-        .section-title::after {
-            content: '';
-            position: absolute;
-            bottom: -3px;
-            left: 0;
-            width: 60px;
-            height: 3px;
-            background: var(--accent-gradient);
-            border-radius: 2px;
+            letter-spacing: -0.01em;
         }
 
         .summary {
-            font-size: 1.05rem;
-            line-height: 1.8;
+            font-size: 1rem;
+            line-height: 1.75;
             color: var(--text-secondary);
-            padding: 2rem;
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            border-left: 5px solid var(--accent-color);
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-            position: relative;
-            z-index: 1;
-        }
-
-        .summary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
-            border-radius: 12px;
-            pointer-events: none;
-            z-index: 0;
+            padding: 1.5rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
         }
 
         .skills-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
         }
 
         .skill-item {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border: 2px solid var(--border-color);
-            padding: 1rem 1.25rem;
-            text-align: center;
-            font-weight: 600;
-            color: var(--text-primary);
-            border-radius: 12px;
-            transition: all 0.3s ease;
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            color: var(--foreground);
+            border-radius: calc(var(--radius) * 0.5);
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
             box-shadow: var(--shadow-sm);
-            font-size: 0.95rem;
-            position: relative;
-            overflow: hidden;
-            z-index: 1;
-        }
-
-        .skill-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: var(--accent-gradient);
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: -1;
         }
 
         .skill-item:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--accent-color);
-            color: white;
-        }
-
-        .skill-item:hover::before {
-            left: 0;
-            opacity: 1;
+            background: var(--accent);
+            border-color: var(--ring);
+            box-shadow: var(--shadow);
         }
 
         .behavior-profile {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border: 2px solid var(--border-color);
-            border-radius: 16px;
-            box-shadow: var(--shadow-md);
-            overflow: hidden;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem;
         }
 
         .behavior-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 0;
+            gap: 1.5rem;
+            column-gap: 2rem;
         }
 
         .behavior-item {
-            padding: 1.5rem;
-            border-right: 1px solid var(--border-light);
-            border-bottom: 1px solid var(--border-light);
-            transition: all 0.3s ease;
-            background: white;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            transition: all 0.2s ease;
+            background: var(--background);
+            box-shadow: var(--shadow-sm);
         }
 
         .behavior-item:hover {
-            background: var(--background-tertiary);
-            transform: scale(1.02);
-            z-index: 1;
-            position: relative;
-        }
-
-        .behavior-item:last-child,
-        .behavior-item:nth-child(even) {
-            border-right: none;
-        }
-
-        .behavior-item:nth-last-child(-n+2) {
-            border-bottom: none;
+            background: var(--muted);
+            border-color: var(--ring);
+            box-shadow: var(--shadow);
         }
 
         .behavior-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--accent-color);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
             margin-bottom: 0.5rem;
         }
 
         .behavior-value {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: var(--text-primary);
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: var(--foreground);
+            line-height: 1.6;
+            white-space: normal;
+            word-spacing: normal;
+            letter-spacing: normal;
+        }
+
+        @media (max-width: 768px) {
+            .behavior-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .behavior-item {
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .behavior-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .behavior-item {
+                padding: 0.875rem;
+            }
+            
+            .behavior-label {
+                font-size: 0.6875rem;
+                margin-bottom: 0.375rem;
+            }
+            
+            .behavior-value {
+                font-size: 0.875rem;
+            }
         }
 
         .projects-container {
             display: grid;
-            gap: 2rem;
+            gap: 1.5rem;
         }
 
         .project-card {
-            border: 2px solid var(--border-color);
-            border-radius: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
             overflow: hidden;
-            background-color: var(--background-primary);
-            box-shadow: var(--shadow-md);
-            transition: all 0.3s ease;
-            position: relative;
+            background-color: var(--card);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
         }
 
         .project-card:hover {
-            transform: translateY(-6px);
-            box-shadow: var(--shadow-xl);
-            border-color: var(--accent-color);
+            box-shadow: var(--shadow-md);
+            border-color: var(--ring);
         }
 
         .project-header {
-            background: var(--accent-gradient);
-            color: white;
+            background: var(--muted);
+            border-bottom: 1px solid var(--border);
             padding: 1.5rem 2rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .project-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="dots" width="60" height="60" patternUnits="userSpaceOnUse"><circle cx="30" cy="30" r="2" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="60" height="60" fill="url(%23dots)"/></svg>');
-            opacity: 0.3;
         }
 
         .project-title {
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-size: 1.25rem;
+            font-weight: 600;
             margin-bottom: 0.5rem;
-            position: relative;
-            z-index: 1;
+            color: var(--foreground);
             letter-spacing: -0.01em;
         }
 
         .project-subtitle {
-            font-size: 0.85rem;
-            opacity: 0.9;
+            font-size: 0.75rem;
+            color: var(--text-muted);
             font-weight: 500;
-            position: relative;
-            z-index: 1;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
         }
 
         .project-highlight {
-            font-size: 0.95rem;
-            opacity: 0.95;
-            margin-top: 0.75rem;
-            position: relative;
-            z-index: 1;
-            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-weight: 400;
         }
 
         .project-content {
             padding: 2rem;
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            background: var(--background);
         }
 
         .project-meta {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
         }
 
         .meta-item {
@@ -423,30 +409,30 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
         }
 
         .meta-label {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
-            color: var(--text-light);
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.375rem;
         }
 
         .meta-value {
-            font-size: 0.9rem;
-            color: var(--text-primary);
+            font-size: 0.875rem;
+            color: var(--foreground);
+            font-weight: 500;
         }
 
         .meta-value a {
-            color: var(--accent-color);
+            color: var(--foreground);
             text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid transparent;
         }
 
         .meta-value a:hover {
-            color: var(--secondary-color);
-            border-bottom-color: var(--accent-color);
+            border-bottom-color: var(--foreground);
         }
 
         .tech-list {
@@ -456,24 +442,23 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
         }
 
         .tech-item {
-            background: linear-gradient(135deg, var(--accent-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            border: none;
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            box-shadow: var(--shadow-sm);
-            transition: all 0.3s ease;
+            background: var(--muted);
+            border: 1px solid var(--border);
+            color: var(--foreground);
+            padding: 0.375rem 0.75rem;
+            border-radius: calc(var(--radius) * 0.5);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
         }
 
         .tech-item:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            background: var(--accent);
+            border-color: var(--ring);
         }
 
         .project-details {
-            border-top: 2px solid var(--border-light);
+            border-top: 1px solid var(--border);
             padding-top: 1.5rem;
             margin-top: 1.5rem;
         }
@@ -481,152 +466,118 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
         .detail-row {
             display: grid;
             grid-template-columns: 120px 1fr;
-            gap: 1.25rem;
+            gap: 1.5rem;
             margin-bottom: 1rem;
             align-items: start;
             padding: 0.75rem;
-            border-radius: 8px;
-            transition: background 0.3s ease;
+            border-radius: calc(var(--radius) * 0.5);
+            transition: background 0.2s ease;
         }
 
         .detail-row:hover {
-            background: var(--background-tertiary);
+            background: var(--muted);
         }
 
         .detail-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--accent-color);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
         }
 
         .detail-value {
-            font-size: 0.95rem;
-            color: var(--text-primary);
+            font-size: 0.875rem;
+            color: var(--foreground);
             line-height: 1.6;
-            font-weight: 500;
+            font-weight: 400;
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 1.25rem;
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            gap: 1rem;
+            background: var(--card);
             padding: 2rem;
-            border: 2px solid var(--border-color);
-            border-radius: 16px;
-            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
         }
 
         .stat-item {
             text-align: center;
             padding: 1.5rem;
-            background: white;
-            border: 2px solid var(--border-light);
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--accent-gradient);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            transition: all 0.2s ease;
         }
 
         .stat-item:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--accent-color);
-        }
-
-        .stat-item:hover::before {
-            transform: scaleX(1);
+            box-shadow: var(--shadow);
+            border-color: var(--ring);
         }
 
         .stat-number {
-            font-size: 2.25rem;
+            font-size: 2rem;
             font-weight: 700;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--foreground);
             margin-bottom: 0.5rem;
             display: block;
             letter-spacing: -0.02em;
         }
 
         .stat-label {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-weight: 600;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
         }
 
         .footer {
-            background: var(--accent-gradient);
-            color: white;
+            background: var(--muted);
+            border-top: 1px solid var(--border);
             text-align: center;
             padding: 2rem;
-            font-size: 0.9rem;
-            opacity: 0.95;
-            font-weight: 500;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .footer::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="footer-grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23footer-grid)"/></svg>');
-            opacity: 0.3;
-        }
-
-        .footer {
-            position: relative;
-            z-index: 1;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 400;
         }
 
         @media (max-width: 768px) {
+            .header {
+                padding: 2rem 1.5rem;
+            }
+
             .header-content {
                 grid-template-columns: 1fr;
                 text-align: center;
-                gap: 1rem;
+                gap: 1.5rem;
             }
 
             .contact-info {
                 justify-content: center;
-                gap: 1rem;
+                gap: 0.75rem;
             }
 
             .main-content {
-                padding: 1.5rem;
+                padding: 2rem 1.5rem;
             }
 
             .project-meta {
                 grid-template-columns: 1fr;
+                gap: 1rem;
             }
 
             .detail-row {
                 grid-template-columns: 1fr;
-                gap: 0.25rem;
+                gap: 0.5rem;
             }
 
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
+                padding: 1.5rem;
             }
         }
 
@@ -643,7 +594,8 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
             }
 
             .header {
-                background-color: var(--primary-color) !important;
+                background-color: white !important;
+                border-bottom-color: #e4e4e7 !important;
                 -webkit-print-color-adjust: exact;
                 color-adjust: exact;
             }
@@ -651,8 +603,6 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
             /* Ensure all elements are visible in print */
             * {
                 visibility: visible !important;
-                display: block !important;
-                position: static !important;
             }
 
             /* Hide any stray CSS content that might appear */
@@ -678,11 +628,10 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
             .skills-container {
                 display: flex !important;
                 flex-wrap: wrap !important;
-                justify-content: space-between !important;
+                justify-content: flex-start !important;
             }
 
             .skill-item {
-                flex: 0 0 30% !important;
                 margin: 0.25rem !important;
             }
         }
@@ -755,7 +704,9 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
             {% endif %}
 
             <!-- Behavior Profile Section -->
-            {% if portfolio.behavior_profile and portfolio.behavior_profile|length > 0 %}
+            {% if portfolio.behavior_profile %}
+            {% set behavior_count = portfolio.behavior_profile|length %}
+            {% if behavior_count > 0 %}
             <section class="section">
                 <h2 class="section-title">Behavioral Profile</h2>
                 <div class="behavior-profile">
@@ -763,7 +714,7 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
                         {% for key, value in portfolio.behavior_profile.items() %}
                         <div class="behavior-item">
                             <div class="behavior-label">{{ key.replace('_', ' ').title() }}</div>
-                            <div class="behavior-value">
+                            <div class="behavior-value" style="white-space: normal; word-spacing: normal;">
                                 {% if value is iterable and value is not string %}
                                     {{ value|join(', ') }}
                                 {% else %}
@@ -775,6 +726,7 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
                     </div>
                 </div>
             </section>
+            {% endif %}
             {% endif %}
 
             <!-- Projects Section -->
@@ -925,7 +877,7 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
 </body>
 </html>
     """)
-
+    
     # Render the template with portfolio data
     html_content = html_template.render(portfolio=portfolio, theme=theme)
 
@@ -940,8 +892,10 @@ def render_html_portfolio(portfolio_json_path, theme='professional'):
 
 def render_pdf_portfolio(portfolio_json_path, theme='minimal'):
     """Render portfolio to PDF with LaTeX-inspired professional design using ReportLab."""
+    print(f"[render_pdf_portfolio] Reading portfolio from: {portfolio_json_path}")
     with open(portfolio_json_path, 'r') as f:
         portfolio = json.load(f)
+    print(f"[render_pdf_portfolio] Loaded portfolio: name={portfolio.get('name')}, skills={len(portfolio.get('skills', []))}, projects={len(portfolio.get('top_projects', []))}")
 
     # Create folders if they don't exist
     pdf_dir = 'generated_pdfs'
@@ -1057,6 +1011,16 @@ def render_pdf_portfolio(portfolio_json_path, theme='minimal'):
         fontSize=7,
         spaceAfter=2,
         leading=9
+    )
+    
+    # Style specifically for behavior items with more spacing
+    behavior_item_style = ParagraphStyle(
+        'LaTeXBehaviorItem',
+        parent=project_detail_style,
+        fontSize=7,
+        spaceAfter=6,  # More space after each behavior item
+        leading=10,  # Line height for better readability
+        wordWrap='CJK'  # Better word wrapping to prevent extra spaces
     )
 
     # Build content with LaTeX-style layout
@@ -1202,66 +1166,105 @@ def render_pdf_portfolio(portfolio_json_path, theme='minimal'):
 
     # Behavior Profile section (LaTeX-style: compact, clean)
     if portfolio.get('behavior_profile'):
-        content.append(Paragraph('BEHAVIORAL PROFILE', section_heading_style))
-        
-        # Horizontal divider
-        behavior_divider = Table([['']], colWidths=[6.5*inch], rowHeights=[0.2])
-        behavior_divider.setStyle(TableStyle([
-            ('LINEBELOW', (0, 0), (-1, -1), 0.5, divider_color),
-        ]))
-        content.append(behavior_divider)
-        content.append(Spacer(1, 0.05*inch))
-        
-        # Two-column layout for behavior traits
-        behavior_items = list(portfolio['behavior_profile'].items())
-        mid_point = (len(behavior_items) + 1) // 2
-        
-        behavior_col1 = []
-        behavior_col2 = []
-        
-        for i, (key, value) in enumerate(behavior_items):
+        # Filter out empty values first
+        behavior_items = []
+        for key, value in portfolio['behavior_profile'].items():
+            # Skip None, empty strings, empty lists
+            if value is None:
+                continue
+            
+            # Check for empty string
+            if isinstance(value, str) and value.strip() == '':
+                continue
+            
+            # Check for empty list/tuple
+            if isinstance(value, (list, tuple)) and len(value) == 0:
+                continue
+            
             formatted_key = key.replace('_', ' ').title()
+            
             # Format value: if it's a list, join with commas; otherwise use as-is
             if isinstance(value, (list, tuple)):
-                formatted_value = ', '.join(str(v) for v in value)
+                # Filter out empty items from list and strip each item
+                filtered_list = [str(v).strip() for v in value if v and str(v).strip()]
+                if len(filtered_list) == 0:
+                    continue
+                # Join with comma and single space (no extra spaces)
+                formatted_value = ', '.join(filtered_list)
+                # Normalize whitespace - remove any extra spaces between words
+                formatted_value = ' '.join(formatted_value.split())
             else:
-                formatted_value = str(value)
-            behavior_text = f"<b>{formatted_key}:</b> {formatted_value}"
-            behavior_para = Paragraph(behavior_text, project_detail_style)
+                formatted_value = str(value).strip()
+                # Normalize whitespace - remove any extra spaces
+                formatted_value = ' '.join(formatted_value.split())
             
-            if i < mid_point:
-                behavior_col1.append([behavior_para])
-            else:
-                behavior_col2.append([behavior_para])
+            # Skip if formatted value is empty after processing
+            if not formatted_value or formatted_value == '':
+                continue
+            
+            behavior_items.append((formatted_key, formatted_value))
         
-        # Pad columns
-        max_len = max(len(behavior_col1), len(behavior_col2))
-        while len(behavior_col1) < max_len:
-            behavior_col1.append([''])
-        while len(behavior_col2) < max_len:
-            behavior_col2.append([''])
-        
-        # Combine into two-column table
-        behavior_data = []
-        for i in range(max_len):
-            behavior_data.append([
-                behavior_col1[i][0] if behavior_col1[i] else '',
-                behavior_col2[i][0] if behavior_col2[i] else ''
-            ])
-        
-        if behavior_data:
-            behavior_table = Table(behavior_data, colWidths=[3.1*inch, 3.1*inch])
-            behavior_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ('TOPPADDING', (0, 0), (-1, -1), 1),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+        # Only show section if there are non-empty items
+        if behavior_items:
+            content.append(Spacer(1, 0.1*inch))  # Extra space before section
+            content.append(Paragraph('BEHAVIORAL PROFILE', section_heading_style))
+            
+            # Horizontal divider
+            behavior_divider = Table([['']], colWidths=[6.5*inch], rowHeights=[0.2])
+            behavior_divider.setStyle(TableStyle([
+                ('LINEBELOW', (0, 0), (-1, -1), 0.5, divider_color),
             ]))
-            content.append(behavior_table)
-        
-        content.append(Spacer(1, 0.08*inch))
+            content.append(behavior_divider)
+            content.append(Spacer(1, 0.08*inch))  # Increased spacing after divider
+            
+            # Now split into two columns based on filtered items
+            mid_point = (len(behavior_items) + 1) // 2
+            
+            behavior_col1 = []
+            behavior_col2 = []
+            
+            for i, (formatted_key, formatted_value) in enumerate(behavior_items):
+                # Clean up extra spaces - normalize whitespace to single spaces
+                cleaned_value = ' '.join(str(formatted_value).split())
+                behavior_text = f"<b>{formatted_key}:</b> {cleaned_value}"
+                behavior_para = Paragraph(behavior_text, behavior_item_style)
+                
+                if i < mid_point:
+                    behavior_col1.append([behavior_para])
+                else:
+                    behavior_col2.append([behavior_para])
+            
+            # Pad columns
+            max_len = max(len(behavior_col1), len(behavior_col2))
+            while len(behavior_col1) < max_len:
+                behavior_col1.append([''])
+            while len(behavior_col2) < max_len:
+                behavior_col2.append([''])
+            
+            # Combine into two-column table
+            behavior_data = []
+            for i in range(max_len):
+                behavior_data.append([
+                    behavior_col1[i][0] if behavior_col1[i] else '',
+                    behavior_col2[i][0] if behavior_col2[i] else ''
+                ])
+            
+            if behavior_data:
+                # Reduce column widths and add gap between columns for better spacing
+                behavior_table = Table(behavior_data, colWidths=[2.8*inch, 2.8*inch], hAlign='LEFT')
+                behavior_table.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('LEFTPADDING', (0, 0), (0, -1), 4),  # Left column padding
+                    ('RIGHTPADDING', (0, 0), (0, -1), 20),  # Extra right padding on left column for gap
+                    ('LEFTPADDING', (1, 0), (1, -1), 20),  # Extra left padding on right column for gap
+                    ('RIGHTPADDING', (1, 0), (1, -1), 4),  # Right column padding
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]))
+                content.append(behavior_table)
+            
+            content.append(Spacer(1, 0.12*inch))  # Increased spacing after section
 
     # Projects section (LaTeX-style: clean, structured, compact)
     if portfolio.get('top_projects'):
@@ -1436,21 +1439,7 @@ def render_pdf_portfolio(portfolio_json_path, theme='minimal'):
                 ]))
                 content.append(stats_table)
 
-    # Footer with metadata (LaTeX-style: subtle, small, left-aligned, compact)
-    content.append(Spacer(1, 0.1*inch))
-    footer_style = ParagraphStyle(
-        'LaTeXFooter',
-        parent=normal_style,
-        fontSize=7,
-        textColor=HexColor('#95a5a6'),
-        alignment=TA_LEFT,
-        spaceBefore=0.2*inch
-    )
-    if portfolio.get('meta', {}).get('github_username'):
-        meta_info = f"Generated from GitHub: {portfolio['meta']['github_username']}"
-        if portfolio.get('meta', {}).get('generated_at'):
-            meta_info += f" • {portfolio['meta']['generated_at'][:10]}"
-        content.append(Paragraph(meta_info, footer_style))
+    # Footer removed - no metadata footer in PDF
 
     # Build PDF
     doc.build(content)

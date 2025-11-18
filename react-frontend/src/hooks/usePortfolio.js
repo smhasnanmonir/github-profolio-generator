@@ -109,9 +109,24 @@ export const usePortfolio = (initialData = null) => {
     setHasChanges(false);
   };
 
-  const saveToLocalStorage = (username) => {
-    localStorage.setItem(`portfolio_${username}`, JSON.stringify(portfolio));
+  const saveToLocalStorage = (username, portfolioToSave = null) => {
+    // Use provided portfolio or current state
+    const portfolioData = portfolioToSave || portfolio;
+    localStorage.setItem(`portfolio_${username}`, JSON.stringify(portfolioData));
     setHasChanges(false);
+    console.log("Saved to localStorage:", {
+      username,
+      portfolioName: portfolioData?.name,
+      skillsCount: portfolioData?.skills?.length,
+      projectsCount: portfolioData?.top_projects?.length,
+    });
+    
+    // Dispatch custom event to notify other components (like PreviewPage)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('portfolioUpdated', { 
+        detail: { username, portfolio: portfolioData } 
+      }));
+    }
   };
 
   const loadFromLocalStorage = (username) => {

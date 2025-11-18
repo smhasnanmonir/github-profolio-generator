@@ -175,20 +175,54 @@ export default function LivePreview({ portfolio }) {
       ${portfolio.location ? `<p class="location">📍 ${portfolio.location}</p>` : ''}
     </div>
 
-    ${portfolio.behavior_profile ? `
-    <div class="section">
-      <h2 class="section-title">🧠 Developer Profile</h2>
-      <div class="behavior-card">
-        <div class="behavior-type">${portfolio.behavior_profile.type || 'Not specified'}</div>
-        ${portfolio.behavior_profile.description ? `<p class="behavior-desc">${portfolio.behavior_profile.description}</p>` : ''}
-        ${portfolio.behavior_profile.traits && portfolio.behavior_profile.traits.length > 0 ? `
-        <div class="traits">
-          ${portfolio.behavior_profile.traits.map(trait => `<span class="trait">${trait}</span>`).join('')}
+    ${portfolio.behavior_profile ? (() => {
+      // Filter out empty values
+      const behaviorItems = Object.entries(portfolio.behavior_profile).filter(([key, value]) => {
+        // Skip null/undefined
+        if (value === null || value === undefined) return false;
+        
+        // Skip empty strings (including whitespace-only)
+        if (typeof value === 'string' && value.trim() === '') return false;
+        
+        // Skip empty arrays
+        if (Array.isArray(value) && value.length === 0) return false;
+        
+        // For arrays, check if all items are empty
+        if (Array.isArray(value)) {
+          const hasNonEmpty = value.some(v => v !== null && v !== undefined && String(v).trim() !== '');
+          if (!hasNonEmpty) return false;
+        }
+        
+        return true;
+      });
+      
+      // Only show if there are non-empty items
+      if (behaviorItems.length === 0) return '';
+      
+      return `
+      <div class="section">
+        <h2 class="section-title">🧠 Developer Profile</h2>
+        <div class="behavior-card">
+          ${behaviorItems.map(([key, value]) => {
+            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            let displayValue = '';
+            if (Array.isArray(value)) {
+              // Filter out empty items from array
+              const filtered = value.filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+              if (filtered.length === 0) return '';
+              displayValue = filtered.map(v => String(v).replace(/</g, '&lt;').replace(/>/g, '&gt;')).join(', ');
+            } else {
+              displayValue = String(value).trim();
+              if (displayValue === '') return '';
+              displayValue = displayValue.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+            if (!displayValue || displayValue.trim() === '') return '';
+            return `<div style="margin-bottom: 0.5rem;"><strong>${label.replace(/</g, '&lt;').replace(/>/g, '&gt;')}:</strong> ${displayValue}</div>`;
+          }).filter(Boolean).join('')}
         </div>
-        ` : ''}
       </div>
-    </div>
-    ` : ''}
+      `;
+    })() : ''}
 
     ${portfolio.skills && portfolio.skills.length > 0 ? `
     <div class="section">

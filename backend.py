@@ -335,6 +335,123 @@ class PortfolioFromDataRequest(BaseModel):
     output_dir: str | None = None
 
 
+class GenerateFromEditedRequest(BaseModel):
+    portfolio: dict
+    output_dir: str | None = None
+
+
+@app.post("/api/generate-from-edited")
+def generate_from_edited(req: GenerateFromEditedRequest):
+    """Generate HTML and PDF from edited portfolio data."""
+    try:
+        portfolio = req.portfolio
+        if not portfolio:
+            raise HTTPException(status_code=400, detail="portfolio is required")
+
+        # Log what we received
+        print(f"[generate-from-edited] Received portfolio: name={portfolio.get('name')}, skills={len(portfolio.get('skills', []))}, projects={len(portfolio.get('top_projects', []))}")
+
+        # Prepare output directories
+        root = Path(req.output_dir) if req.output_dir else Path("organized_structure/outputs")
+        generated = root / "generated"
+        generated.mkdir(parents=True, exist_ok=True)
+
+        # Get username from portfolio (try multiple possible fields)
+        username = (
+            portfolio.get("meta", {}).get("github_username") or
+            portfolio.get("username") or
+            portfolio.get("name", "").lower().replace(" ", "") or
+            "unknown"
+        )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Save the edited portfolio JSON - use this for rendering
+        portfolio_for_render_json = generated / f"portfolio_edited_{username}_{timestamp}.json"
+        portfolio_for_render_json = portfolio_for_render_json.resolve()  # Make path absolute
+        with open(portfolio_for_render_json, "w", encoding="utf-8") as f:
+            json.dump(portfolio, f, indent=2, ensure_ascii=False)
+        
+        print(f"[generate-from-edited] Saved portfolio JSON to: {portfolio_for_render_json}")
+        print(f"[generate-from-edited] JSON file exists: {portfolio_for_render_json.exists()}")
+        
+        # Verify the JSON was saved correctly by reading it back
+        with open(portfolio_for_render_json, "r", encoding="utf-8") as f:
+            verify_portfolio = json.load(f)
+        print(f"[generate-from-edited] Verified JSON: name={verify_portfolio.get('name')}, skills={len(verify_portfolio.get('skills', []))}, projects={len(verify_portfolio.get('top_projects', []))}")
+        
+        # Show sample of skills and projects to verify edits
+        if verify_portfolio.get('skills'):
+            print(f"[generate-from-edited] Sample skills: {verify_portfolio.get('skills')[:5]}")
+        if verify_portfolio.get('top_projects'):
+            print(f"[generate-from-edited] Sample projects: {[p.get('name') for p in verify_portfolio.get('top_projects', [])[:3]]}")
+
+        # Render HTML and PDF using the edited portfolio JSON file (use absolute path)
+        json_path_str = str(portfolio_for_render_json)
+        print(f"[generate-from-edited] Rendering HTML from: {json_path_str}")
+        html_rendered = render_html_portfolio(json_path_str, theme='professional')
+        print(f"[generate-from-edited] HTML rendered to: {html_rendered}")
+        
+        print(f"[generate-from-edited] Rendering PDF from: {json_path_str}")
+        pdf_rendered = render_pdf_portfolio(json_path_str, theme='minimal')
+        print(f"[generate-from-edited] PDF rendered to: {pdf_rendered}")
+
+        html_path = Path(html_rendered) if html_rendered else None
+        pdf_path = None
+        
+        if not html_path or not html_path.exists():
+            # Fallback: render simple HTML using the edited portfolio
+            html_path = render_html_fallback(portfolio, generated, username, timestamp)
+
+        # Ensure final destinations
+        html_final_dir = root / "generated_htmls"
+        html_final_dir.mkdir(parents=True, exist_ok=True)
+        html_final = html_final_dir / html_path.name if html_path else None
+        if html_path and html_path.exists():
+            try:
+                shutil.copyfile(html_path, html_final)
+                print(f"[generate-from-edited] Copied HTML to: {html_final}")
+            except Exception as e:
+                print(f"[generate-from-edited] Failed to copy HTML: {e}")
+                html_final = html_path
+
+        pdf_dir = root / "generated_pdfs"
+        pdf_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Prefer the ReportLab PDF if available
+        if pdf_rendered and Path(pdf_rendered).exists():
+            pdf_src = Path(pdf_rendered)
+            pdf_path = pdf_dir / pdf_src.name
+            try:
+                shutil.copyfile(pdf_src, pdf_path)
+                print(f"[generate-from-edited] Copied PDF to: {pdf_path}")
+            except Exception as e:
+                print(f"[generate-from-edited] Failed to copy PDF: {e}")
+                pdf_path = None
+        else:
+            # Fallback to simple HTML-to-PDF using the edited portfolio data
+            if html_final and html_final.exists():
+                pdf_path = pdf_dir / (html_final.stem + ".pdf")
+                print(f"[generate-from-edited] Generating PDF fallback from edited portfolio")
+                ok = html_to_pdf_simple(portfolio, pdf_path)  # Use the edited portfolio directly
+                if not ok:
+                    print(f"[generate-from-edited] PDF fallback generation failed")
+                    pdf_path = None
+                else:
+                    print(f"[generate-from-edited] PDF fallback generated: {pdf_path}")
+
+        print(f"[generate-from-edited] Final paths - HTML: {html_final}, PDF: {pdf_path}")
+
+        return {
+            "success": True,
+            "json_path": str(portfolio_for_render_json),
+            "html_path": str(html_final) if html_final else None,
+            "pdf_path": str(pdf_path) if pdf_path else None,
+            "portfolio": portfolio,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/portfolio-from-data")
 def create_portfolio_from_data(req: PortfolioFromDataRequest):
     try:

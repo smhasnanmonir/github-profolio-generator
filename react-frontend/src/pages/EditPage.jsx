@@ -64,6 +64,9 @@ export default function EditPage() {
     saveToLocalStorage,
   } = usePortfolio(initialData);
 
+  const [isGeneratingHTML, setIsGeneratingHTML] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
   // Get latest outputs for download buttons
   const { data: outputs, refetch: refetchOutputs } = useQuery({
     queryKey: ["latest-outputs"],
@@ -74,62 +77,96 @@ export default function EditPage() {
   // Regenerate mutation for quick downloads
   const regenerateMutation = useMutation({
     mutationFn: () => {
-      // Save current portfolio first
-      if (hasChanges) {
-        saveToLocalStorage(username);
-      }
-      // Get latest from localStorage
-      const latestPortfolio = JSON.parse(
-        localStorage.getItem(`portfolio_${username}`) || "null"
-      );
-      if (!latestPortfolio) {
+      // Use current portfolio state directly (has latest edits)
+      if (!portfolio) {
         throw new Error("No portfolio data found");
       }
-      return api.generateFromEdited(latestPortfolio);
+      // Save current portfolio first
+      if (hasChanges) {
+        saveToLocalStorage(username, portfolio);
+      }
+      // Use the current portfolio state directly
+      return api.generateFromEdited(portfolio);
     },
     onSuccess: () => {
       refetchOutputs();
     },
   });
 
-  // Handle quick download with auto-regeneration
+  // Handle quick download - regenerate on backend with current edited data, then download
   const handleQuickDownload = useCallback(
     async (type) => {
-      // If there are changes, regenerate first
-      if (hasChanges) {
-        try {
-          await regenerateMutation.mutateAsync();
-          // Wait for files to be ready
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          const refetchedData = await refetchOutputs();
-          const updatedOutputs = refetchedData.data || outputs;
-          
-          // Download after regeneration
-          if (type === "html" && updatedOutputs?.html_path) {
-            window.open(api.getDownloadUrl(updatedOutputs.html_path), "_blank");
-          } else if (type === "pdf" && updatedOutputs?.pdf_path) {
-            window.open(api.getDownloadUrl(updatedOutputs.pdf_path), "_blank");
-          } else {
-            alert(`${type.toUpperCase()} file not available yet. Please wait a moment and try again.`);
-          }
-          return;
-        } catch (error) {
-          console.error("Failed to regenerate:", error);
-          alert("Failed to regenerate portfolio. Please try again.");
-          return;
-        }
+      // Use the current portfolio state directly (has latest edits)
+      if (!portfolio) {
+        alert("No portfolio data found. Please generate a portfolio first.");
+        return;
       }
 
-      // No changes - download existing files
-      if (type === "html" && outputs?.html_path) {
-        window.open(api.getDownloadUrl(outputs.html_path), "_blank");
-      } else if (type === "pdf" && outputs?.pdf_path) {
-        window.open(api.getDownloadUrl(outputs.pdf_path), "_blank");
+      // Save current changes to localStorage first
+      if (hasChanges) {
+        saveToLocalStorage(username, portfolio);
+        // Wait a tiny bit to ensure localStorage is updated
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Use the current portfolio state directly - this has the latest edits
+      const portfolioToUse = portfolio;
+
+      console.log("Regenerating portfolio with latest edits:", {
+        portfolioName: portfolioToUse.name,
+        skillsCount: portfolioToUse.skills?.length,
+        projectsCount: portfolioToUse.top_projects?.length,
+      });
+
+      // Set loading state
+      if (type === "html") {
+        setIsGeneratingHTML(true);
       } else {
-        alert(`${type.toUpperCase()} file not available. Please regenerate first.`);
+        setIsGeneratingPDF(true);
+      }
+
+      try {
+        // Regenerate on backend with edited portfolio data
+        const response = await api.generateFromEdited(portfolioToUse);
+        
+        if (!response.success) {
+          throw new Error("Regeneration failed");
+        }
+
+        console.log("Regeneration successful, file paths:", {
+          html: response.html_path,
+          pdf: response.pdf_path,
+        });
+
+        // Wait a bit for files to be written to disk
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        
+        // Refetch outputs to get the new file paths
+        await refetchOutputs();
+        
+        // Use response paths
+        const htmlPath = response.html_path;
+        const pdfPath = response.pdf_path;
+        
+        // Download the file
+        if (type === "html" && htmlPath) {
+          console.log("Downloading HTML from:", htmlPath);
+          window.open(api.getDownloadUrl(htmlPath), "_blank");
+        } else if (type === "pdf" && pdfPath) {
+          console.log("Downloading PDF from:", pdfPath);
+          window.open(api.getDownloadUrl(pdfPath), "_blank");
+        } else {
+          alert(`${type.toUpperCase()} file not available yet. Please wait a moment and try again.`);
+        }
+      } catch (error) {
+        console.error("Failed to regenerate:", error);
+        alert(`Failed to regenerate portfolio: ${error.message || "Unknown error"}. Please try again.`);
+      } finally {
+        setIsGeneratingHTML(false);
+        setIsGeneratingPDF(false);
       }
     },
-    [hasChanges, outputs, username, saveToLocalStorage, regenerateMutation, refetchOutputs]
+    [portfolio, hasChanges, username, saveToLocalStorage, refetchOutputs]
   );
 
   useEffect(() => {
@@ -142,7 +179,8 @@ export default function EditPage() {
   useEffect(() => {
     if (hasChanges && portfolio) {
       const timer = setTimeout(() => {
-        saveToLocalStorage(username);
+        // Use the current portfolio state directly
+        saveToLocalStorage(username, portfolio);
       }, 1000);
       return () => clearTimeout(timer);
     }
@@ -150,13 +188,15 @@ export default function EditPage() {
 
   const handleSave = () => {
     setIsSaving(true);
-    saveToLocalStorage(username);
+    // Use the current portfolio state directly
+    saveToLocalStorage(username, portfolio);
     setTimeout(() => setIsSaving(false), 500);
   };
 
   const handlePreview = () => {
-    if (hasChanges) {
-      saveToLocalStorage(username);
+    if (hasChanges && portfolio) {
+      // Use the current portfolio state directly
+      saveToLocalStorage(username, portfolio);
     }
     navigate(`/preview/${username}`);
   };
@@ -265,66 +305,62 @@ export default function EditPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {outputs.html_path && (
-                    <>
-                      <a
-                        href={api.getViewUrl(outputs.html_path)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
-                      >
-                        <ExternalLink className="w-3 h-3" />
+                  {outputs?.html_path && !isGeneratingHTML && (
+                    <a
+                      href={api.getViewUrl(outputs.html_path)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      HTML
+                    </a>
+                  )}
+                  <button
+                    onClick={() => handleQuickDownload("html")}
+                    disabled={isGeneratingHTML || isGeneratingPDF}
+                    className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-900 border border-zinc-700 disabled:border-zinc-800 text-white disabled:text-slate-500 rounded text-xs flex items-center gap-1.5 transition-all disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingHTML ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3 h-3" />
                         HTML
-                      </a>
-                      <button
-                        onClick={() => handleQuickDownload("html")}
-                        disabled={regenerateMutation.isPending}
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-900 border border-zinc-700 disabled:border-zinc-800 text-white disabled:text-slate-500 rounded text-xs flex items-center gap-1.5 transition-all disabled:cursor-not-allowed"
-                      >
-                        {regenerateMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-3 h-3" />
-                            HTML
-                          </>
-                        )}
-                      </button>
-                    </>
+                      </>
+                    )}
+                  </button>
+                  {outputs?.pdf_path && !isGeneratingPDF && (
+                    <a
+                      href={api.getViewUrl(outputs.pdf_path)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      PDF
+                    </a>
                   )}
-                  {outputs.pdf_path && (
-                    <>
-                      <a
-                        href={api.getViewUrl(outputs.pdf_path)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"
-                      >
-                        <ExternalLink className="w-3 h-3" />
+                  <button
+                    onClick={() => handleQuickDownload("pdf")}
+                    disabled={isGeneratingHTML || isGeneratingPDF}
+                    className="px-3 py-1.5 bg-white hover:bg-zinc-100 disabled:bg-zinc-800 text-zinc-900 disabled:text-slate-500 rounded text-xs flex items-center gap-1.5 transition-all font-medium disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingPDF ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3 h-3" />
                         PDF
-                      </a>
-                      <button
-                        onClick={() => handleQuickDownload("pdf")}
-                        disabled={regenerateMutation.isPending}
-                        className="px-3 py-1.5 bg-white hover:bg-zinc-100 disabled:bg-zinc-800 text-zinc-900 disabled:text-slate-500 rounded text-xs flex items-center gap-1.5 transition-all font-medium disabled:cursor-not-allowed"
-                      >
-                        {regenerateMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-3 h-3" />
-                            PDF
-                          </>
-                        )}
-                      </button>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </button>
                   <button
                     onClick={() => navigate(`/preview/${username}`)}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs flex items-center gap-1.5 transition-all"

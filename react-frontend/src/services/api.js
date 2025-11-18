@@ -48,6 +48,15 @@ export const api = {
 
   // Generate portfolio from edited data
   generateFromEdited: async (portfolioData) => {
+    // Log what we're sending
+    console.log("[api.generateFromEdited] Sending portfolio data:", {
+      name: portfolioData?.name,
+      skillsCount: portfolioData?.skills?.length,
+      projectsCount: portfolioData?.top_projects?.length,
+      skills: portfolioData?.skills?.slice(0, 5),
+      projectNames: portfolioData?.top_projects?.map(p => p.name).slice(0, 3),
+    });
+
     const res = await fetch(`${API_BASE}/api/generate-from-edited`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -58,10 +67,17 @@ export const api = {
 
     if (!res.ok) {
       const error = await res.text();
+      console.error("[api.generateFromEdited] Error response:", error);
       throw new Error(error);
     }
 
-    return res.json();
+    const result = await res.json();
+    console.log("[api.generateFromEdited] Success response:", {
+      success: result.success,
+      html_path: result.html_path,
+      pdf_path: result.pdf_path,
+    });
+    return result;
   },
 
   // Get latest generated files
